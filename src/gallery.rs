@@ -1,21 +1,23 @@
 // This one is for when we start communicating in channels
 #![allow(unused_must_use)]
 
-use std::io::prelude::*;
+use std::fmt::Debug;
+use std::fs::read_to_string;
+use std::io::ErrorKind;
 use std::path::Path;
-use std::thread::ThreadId;
-use std::{fs, io, string, sync, thread};
+use std::string::FromUtf8Error;
+use std::thread::spawn;
 
 use crate::parsers::{get_images, get_tags, Tags};
 
+use log::info;
 use reqwest::blocking::Client;
-use std::collections;
 
 #[derive(Debug)]
 pub enum GalleryError {
-    OpenError(io::ErrorKind),
-    ReadError(io::ErrorKind),
-    DecodeError(string::FromUtf8Error),
+    OpenError(ErrorKind),
+    ReadError(ErrorKind),
+    DecodeError(FromUtf8Error),
 
     DownloadError(reqwest::Error),
 }
@@ -39,169 +41,73 @@ impl Gallery {
     }
 }
 
-enum ChannelPacketType {
-    Error,
-    Image,
-    Tag,
-    End,
-    Start,
-}
-struct ChannelPacket {
-    // We have to track which thread this packet is from
-    // because multiple packets from separate threads might arrive
-    // to `rx`
-    id: thread::ThreadId,
-    ptype: ChannelPacketType,
-    content: String,
-}
-
 pub fn make_galleries<StrPath>(path: &StrPath) -> Result<Vec<Gallery>, String>
 where
-    StrPath: AsRef<Path> + ?Sized,
+    StrPath: AsRef<Path> + Debug + ?Sized,
 {
-    let mut file = fs::OpenOptions::new()
-        .read(true)
-        .open(path)
-        .map_err(|err| err.kind().to_string())?;
+    // let mut file = fs::OpenOptions::new()
+    //     .read(true)
+    //     .open(path)
+    //     .map_err(|err| err.kind().to_string())?;
 
-    let mut buf = vec![];
-    file.read(&mut buf).map_err(|err| err.kind().to_string())?;
+    // let mut buf = vec![];
+    // let bytes_read = file.read(&mut buf).map_err(|err| err.kind().to_string())?;
 
-    let galleries = String::from_utf8(buf)
-        .map_err(|err| err.to_string())?
-        .split('\n')
+    // info!("Read {} bytes from {:?}", bytes_read, path);
+
+    let buf = read_to_string(path).map_err(|e| e.kind().to_string())?;
+
+    let galleries = buf
+        .split("\n")
         .map(|i| i.to_string())
         .collect::<Vec<String>>();
 
-    let mut spawned_threads: u8 = 0;
+    info!("{} galleries to get", galleries.len());
+
     let client = Client::new();
-    let (tx, rx) = sync::mpsc::channel::<ChannelPacket>();
+    let mut threads = vec![];
     for gallery in galleries {
+        info!("On gallery {:?}", gallery);
         let client = client.clone();
-        let tx = tx.clone();
 
-        thread::spawn(move || {
-            tx.send(ChannelPacket {
-                id: thread::current().id(),
-                ptype: ChannelPacketType::Start,
-                content: gallery.clone(),
-            });
+        threads.push(spawn(move || {
+            let gallery_content = client.get(gallery.clone()).send().unwrap();
+            let mut res = Gallery::new(gallery.clone()).unwrap();
 
-            let gallery_content = client
-                .get(gallery.clone())
-                .send()
-                .map_err(|e| {
-                    tx.send(ChannelPacket {
-                        id: thread::current().id(),
-                        ptype: ChannelPacketType::Error,
-                        content: format!("Error while getting gallery {}: {}", gallery, e),
-                    });
-                })
-                .unwrap();
+            info!("GET {} => {}", gallery, gallery_content.status());
+            let html = gallery_content.text().unwrap();
 
-            let html = gallery_content
-                .text()
-                .map_err(|e| {
-                    tx.send(ChannelPacket {
-                        id: thread::current().id(),
-                        ptype: ChannelPacketType::Error,
-                        content: format!(
-                            "Error while getting text from gallery {}: {}",
-                            gallery, e
-                        ),
-                    });
-                })
-                .unwrap();
-
-            let tags = get_tags(&html)
-                .map_err(|e| {
-                    tx.send(ChannelPacket {
-                        id: thread::current().id(),
-                        ptype: ChannelPacketType::Error,
-                        content: format!(
-                            "Error while extracting tags from gallery {}: {}",
-                            gallery, e
-                        ),
-                    });
-                })
-                .unwrap();
+            info!("Extracting tags");
+            let tags = get_tags(&html).unwrap();
 
             for tag in tags.keys() {
                 let val = tags.get(tag).unwrap();
 
-                tx.send(ChannelPacket {
-                    id: thread::current().id(),
-                    ptype: ChannelPacketType::Tag,
-                    content: format!("{}:{}", tag, val),
-                });
+                info!("Tag {}: {}", tag, val);
+                res.tags.add_tag(tag.clone(), val.clone());
             }
 
-            let images = get_images(&html)
-                .map_err(|e| {
-                    tx.send(ChannelPacket {
-                        id: thread::current().id(),
-                        ptype: ChannelPacketType::Error,
-                        content: format!(
-                            "Error while extracting images from gallery {}: {}",
-                            gallery, e
-                        ),
-                    });
-                })
-                .unwrap();
+            info!("Extracting Images");
+
+            let images = get_images(&html).unwrap();
 
             for image in images {
-                tx.send(ChannelPacket {
-                    id: thread::current().id(),
-                    ptype: ChannelPacketType::Image,
-                    content: image,
-                });
+                info!("Image {:?}", image);
+                res.images.push(image);
             }
 
-            tx.send(ChannelPacket {
-                id: thread::current().id(),
-                ptype: ChannelPacketType::End,
-                content: String::from(""),
-            });
-        });
-
-        spawned_threads += 1;
+            res
+        }));
     }
 
-    let mut tracked_threads = collections::HashMap::<ThreadId, Gallery>::new();
-    while let Ok(packet) = rx.recv() {
-        match packet.ptype {
-            ChannelPacketType::Start => {
-                tracked_threads.insert(packet.id, Gallery::new(packet.content).unwrap());
-            }
-            ChannelPacketType::End => {
-                tracked_threads.remove(&packet.id);
-            }
-            ChannelPacketType::Error => {
-                tracked_threads.remove(&packet.id);
-                return Err(format!(
-                    "Received error from thread {:?}: {}",
-                    packet.id, packet.content
-                ));
-            }
-            ChannelPacketType::Image => {
-                tracked_threads
-                    .get_mut(&packet.id)
-                    .unwrap()
-                    .images
-                    .push(packet.content);
-            }
-            ChannelPacketType::Tag => {
-                let tag: Vec<String> = packet.content.split(':').map(|t| t.to_string()).collect();
-                tracked_threads
-                    .get_mut(&packet.id)
-                    .unwrap()
-                    .tags
-                    .add_tag(tag[0].clone(), tag[1].clone())
-            }
+    let mut galleries = vec![];
+    for thread in threads {
+        if let Ok(gallery) = thread.join() {
+            galleries.push(gallery);
         }
     }
 
-    Ok(vec![])
+    Ok(galleries)
 }
 
 #[cfg(test)]
@@ -212,6 +118,9 @@ mod tests {
     fn gallery_works() {
         let gallery = make_galleries("./res/galleries.txt");
 
-        assert!(gallery.is_ok())
+        assert!(gallery.is_ok());
+        let gallery = gallery.unwrap();
+
+        assert_eq!(gallery.len(), 55);
     }
 }

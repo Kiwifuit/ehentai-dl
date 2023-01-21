@@ -7,6 +7,7 @@ pub enum TagError {
     RegExParseError(regex::Error),
 }
 
+#[derive(Debug)]
 pub struct Tags {
     tags: collections::HashMap<String, String>,
 }

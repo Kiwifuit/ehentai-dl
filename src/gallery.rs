@@ -20,6 +20,7 @@ pub enum GalleryError {
     DownloadError(reqwest::Error),
 }
 
+#[derive(Debug)]
 pub struct Gallery {
     url: String,
     images: Vec<String>,

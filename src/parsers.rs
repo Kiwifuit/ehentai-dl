@@ -1,9 +1,15 @@
 use std::collections;
 
-use urlencoding::decode;
-
 const TAG_PARSER: &str = r"https://e-hentai\.org/tag/(?P<name>\w*):(?P<value>[\w+]*)";
 const IMAGE_PARSER: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(\d+)";
+
+// Don't really know how to name this constant.
+// The one above filters the "image viewer", while
+// this one filters the image itself
+//
+// The way of extracting the image is this:
+// Gallery -> Gallery Image Viewer -> Image
+const IMAGE_FILE_PARSER: &str = r"(?P<image>https://\w{7}.\w{12}.hath.network(:\d{5}/|/)h/.*\.jpg)";
 
 #[derive(Debug)]
 pub struct Tags {
@@ -28,19 +34,25 @@ pub fn get_tags(content: &String) -> Result<collections::HashMap<String, String>
     let mut tags = collections::HashMap::new();
 
     for cap in parser.captures_iter(content) {
-        tags.insert(
-            cap["name"].to_string(),
-            decode(&cap["value"])
-                .map_err(|e| format!("Unable to decode tag value: {}", e))?
-                .to_string(),
-        );
+        tags.insert(cap["name"].to_string(), cap["value"].replace("+", " "));
     }
 
     Ok(tags)
 }
 
-pub fn get_images(content: &String) -> Result<Vec<String>, regex::Error> {
+pub fn get_galleries(content: &String) -> Result<Vec<String>, regex::Error> {
     let parser = regex::Regex::new(IMAGE_PARSER)?;
+    let mut images = vec![];
+
+    for cap in parser.captures_iter(content) {
+        images.push(cap.get(0).unwrap().as_str().to_string())
+    }
+
+    Ok(images)
+}
+
+pub fn get_images(content: &String) -> Result<Vec<String>, regex::Error> {
+    let parser = regex::Regex::new(IMAGE_FILE_PARSER)?;
     let mut images = vec![];
 
     for cap in parser.captures_iter(content) {

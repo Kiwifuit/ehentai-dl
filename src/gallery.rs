@@ -8,9 +8,9 @@ use std::path::Path;
 use std::string::FromUtf8Error;
 use std::thread::spawn;
 
-use crate::parsers::{get_images, get_tags, Tags};
+use crate::parsers::{get_galleries, get_tags, Tags};
 
-use log::info;
+use log::debug;
 use reqwest::blocking::Client;
 
 #[derive(Debug)]
@@ -52,37 +52,41 @@ where
         .map(|i| i.to_string())
         .collect::<Vec<String>>();
 
-    info!("{} galleries to get", galleries.len());
+    debug!("{} galleries to get", galleries.len());
 
     let client = Client::new();
     let mut threads = vec![];
     for gallery in galleries {
-        info!("On gallery {:?}", gallery);
+        if gallery == String::new() {
+            continue;
+        }
+
+        debug!("On gallery {:?}", gallery);
         let client = client.clone();
 
         threads.push(spawn(move || {
             let gallery_content = client.get(gallery.clone()).send().unwrap();
             let mut res = Gallery::new(gallery.clone()).unwrap();
 
-            info!("GET {} => {}", gallery, gallery_content.status());
+            debug!("GET {} => {}", gallery, gallery_content.status());
             let html = gallery_content.text().unwrap();
 
-            info!("Extracting tags");
+            debug!("Extracting tags");
             let tags = get_tags(&html).unwrap();
 
             for tag in tags.keys() {
                 let val = tags.get(tag).unwrap();
 
-                info!("Tag {}: {}", tag, val);
+                debug!("Tag {}: {}", tag, val);
                 res.tags.add_tag(tag.clone(), val.clone());
             }
 
-            info!("Extracting Images");
+            debug!("Extracting Images");
 
-            let images = get_images(&html).unwrap();
+            let images = get_galleries(&html).unwrap();
 
             for image in images {
-                info!("Image {:?}", image);
+                debug!("Image {:?}", image);
                 res.images.push(image);
             }
 

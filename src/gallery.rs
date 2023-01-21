@@ -12,6 +12,7 @@ use crate::parsers::{get_galleries, get_tags, Tags};
 
 use log::debug;
 use reqwest::blocking::Client;
+use termprogress::prelude::*;
 
 #[derive(Debug)]
 pub enum GalleryError {
@@ -24,20 +25,18 @@ pub enum GalleryError {
 
 #[derive(Debug)]
 pub struct Gallery {
-    url: String,
     images: Vec<String>,
     tags: Tags,
     client: Client,
 }
 
 impl Gallery {
-    pub fn new(url: String) -> Result<Self, GalleryError> {
-        Ok(Self {
-            url,
+    pub fn new() -> Self {
+        Self {
             tags: Tags::new(),
             images: vec![],
             client: Client::new(),
-        })
+        }
     }
 }
 
@@ -54,6 +53,9 @@ where
 
     debug!("{} galleries to get", galleries.len());
 
+    let mut spinner = Spin::default();
+    spinner.set_title("Spawning threads");
+
     let client = Client::new();
     let mut threads = vec![];
     for gallery in galleries {
@@ -66,7 +68,7 @@ where
 
         threads.push(spawn(move || {
             let gallery_content = client.get(gallery.clone()).send().unwrap();
-            let mut res = Gallery::new(gallery.clone()).unwrap();
+            let mut res = Gallery::new();
 
             debug!("GET {} => {}", gallery, gallery_content.status());
             let html = gallery_content.text().unwrap();
@@ -92,14 +94,21 @@ where
 
             res
         }));
+
+        spinner.bump();
     }
 
     let mut galleries = vec![];
+    spinner.set_title("Finishing up");
     for thread in threads {
         if let Ok(gallery) = thread.join() {
             galleries.push(gallery);
         }
+        spinner.bump()
     }
+
+    spinner.println(format!("Downloading {} galleries", galleries.len()).as_str());
+    spinner.complete();
 
     Ok(galleries)
 }

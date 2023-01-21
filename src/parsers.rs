@@ -1,11 +1,9 @@
 use std::collections;
 
-const TAG_PARSER: &str = r"https://e-hentai\.org/tag/(?P<name>.*):(?P<value>.*)";
-const IMAGE_PARSER: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(\d+)";
+use urlencoding::decode;
 
-pub enum TagError {
-    RegExParseError(regex::Error),
-}
+const TAG_PARSER: &str = r"https://e-hentai\.org/tag/(?P<name>\w*):(?P<value>[\w+]*)";
+const IMAGE_PARSER: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(\d+)";
 
 #[derive(Debug)]
 pub struct Tags {
@@ -24,12 +22,18 @@ impl Tags {
     }
 }
 
-pub fn get_tags(content: &String) -> Result<collections::HashMap<String, String>, regex::Error> {
-    let parser = regex::Regex::new(TAG_PARSER)?;
+pub fn get_tags(content: &String) -> Result<collections::HashMap<String, String>, String> {
+    let parser =
+        regex::Regex::new(TAG_PARSER).map_err(|e| format!("Unable to compile parser: {}", e))?;
     let mut tags = collections::HashMap::new();
 
     for cap in parser.captures_iter(content) {
-        tags.insert(cap["name"].to_string(), cap["value"].to_string());
+        tags.insert(
+            cap["name"].to_string(),
+            decode(&cap["value"])
+                .map_err(|e| format!("Unable to decode tag value: {}", e))?
+                .to_string(),
+        );
     }
 
     Ok(tags)

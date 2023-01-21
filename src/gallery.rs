@@ -16,41 +16,31 @@ pub struct Gallery {
 }
 
 impl Gallery {
-    pub fn new<StrPath: AsRef<Path> + ?Sized>(path: &StrPath) -> Result<Self, GalleryError> {
-        let mut file = fs::OpenOptions::new()
-            .read(true)
-            .open(path)
-            .map_err(|err| GalleryError::OpenError(err.kind()))?;
-
-        let mut buf = vec![];
-        file.read(&mut buf)
-            .map_err(|err| GalleryError::ReadError(err.kind()))?;
-
-        let images = String::from_utf8(buf)
-            .map_err(|err| GalleryError::DecodeError(err))?
-            .split('\n')
-            .map(|i| i.to_string())
-            .collect::<Vec<String>>();
-
+    pub fn new(images: Vec<String>) -> Result<Self, GalleryError> {
         Ok(Self {
             images,
             client: reqwest::Client::new(),
         })
     }
+}
 
-    pub fn download_all(&self) -> Result<usize, ()> {}
+pub fn make_galleries<StrPath>(path: &StrPath) -> Result<Vec<Gallery>, String>
+where
+    StrPath: AsRef<Path> + ?Sized,
+{
+    let mut file = fs::OpenOptions::new()
+        .read(true)
+        .open(path)
+        .map_err(|err| err.kind().to_string())?;
 
-    async fn download_image(&self, img: &String) -> Result<usize, GalleryError> {
-        let mut total_downloaded: usize = 0;
-        let content = self
-            .client
-            .get(img)
-            .send()
-            .await
-            .map_err(|e| GalleryError::DownloadError(e))?;
+    let mut buf = vec![];
+    file.read(&mut buf).map_err(|err| err.kind().to_string())?;
 
-        total_downloaded += content.content_length().or(Some(0)).unwrap() as usize;
-    }
+    let images = String::from_utf8(buf)
+        .map_err(|err| err.to_string())?
+        .split('\n')
+        .map(|i| i.to_string())
+        .collect::<Vec<String>>();
 }
 
 #[cfg(test)]
@@ -59,7 +49,7 @@ mod tests {
 
     #[test]
     fn gallery_works() {
-        let gallery = Gallery::new("./res/galleries.txt");
+        let gallery = make_galleries("./res/galleries.txt");
 
         assert!(gallery.is_ok())
     }

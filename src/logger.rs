@@ -16,7 +16,7 @@ pub fn setup_logger() -> Result<(), String> {
         .error(Color::TrueColor { r: 0, g: 0, b: 0 });
 
     Dispatch::new()
-        .format(|out, msg, record| {
+        .format(move |out, msg, record| {
             out.finish(format_args!(
                 "[{}] [{}] ({}) {}",
                 Local::now(),

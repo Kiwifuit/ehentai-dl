@@ -45,16 +45,6 @@ pub fn make_galleries<StrPath>(path: &StrPath) -> Result<Vec<Gallery>, String>
 where
     StrPath: AsRef<Path> + Debug + ?Sized,
 {
-    // let mut file = fs::OpenOptions::new()
-    //     .read(true)
-    //     .open(path)
-    //     .map_err(|err| err.kind().to_string())?;
-
-    // let mut buf = vec![];
-    // let bytes_read = file.read(&mut buf).map_err(|err| err.kind().to_string())?;
-
-    // info!("Read {} bytes from {:?}", bytes_read, path);
-
     let buf = read_to_string(path).map_err(|e| e.kind().to_string())?;
 
     let galleries = buf

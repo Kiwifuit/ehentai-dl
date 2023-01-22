@@ -7,6 +7,7 @@ use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 
+#[derive(Debug)]
 pub enum GalleryError<'a> {
     NetworkError(reqwest::Error),
     EmptyResponseError(reqwest::Error),
@@ -18,6 +19,7 @@ pub enum GalleryError<'a> {
     EmptyError,
 }
 
+#[derive(Debug)]
 pub struct Gallery {
     name: String,
     total: usize,
@@ -55,7 +57,7 @@ impl Gallery {
         Ok(Self {
             client,
             gallery: images,
-            total: total_pages,
+            total: total_pages * 40,
             name: title,
         })
     }

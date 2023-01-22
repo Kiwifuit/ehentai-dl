@@ -67,9 +67,11 @@ impl Gallery {
     }
 
     fn download_image(&self, image: &String) -> Result<usize, GalleryError> {
+        dbg!(&self);
+
         let mut savefile = NamedTempFile::new_in(
             self.tags
-                .get_tag("name")
+                .get_tag("parody")
                 .unwrap_or(&String::from("unknown")),
         )
         .map_err(|e| GalleryError::TempDirError(e.kind()))?;

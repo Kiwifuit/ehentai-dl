@@ -1,16 +1,15 @@
 // This one is for when we start communicating in channels
 #![allow(unused_must_use)]
 
+use std::fmt::Debug;
 use std::fs::read_to_string;
 use std::io::{ErrorKind, Write};
 use std::path::Path;
-use std::string::FromUtf8Error;
 use std::thread::spawn;
-use std::{fmt::Debug, fs::OpenOptions};
 
-use crate::parsers::{get_galleries, get_tags, Tags};
+use crate::parsers::{get_galleries, get_images, get_tags, Tags};
 
-use log::debug;
+use log::{debug, info, trace};
 use reqwest::blocking::Client;
 use tempfile::NamedTempFile;
 use termprogress::prelude::*;
@@ -20,7 +19,7 @@ const CHUNK_SIZE: usize = 1024;
 #[derive(Debug)]
 pub enum GalleryError {
     WriteError(ErrorKind),
-    DecodeError(FromUtf8Error),
+    SearchError(regex::Error),
 
     TempDirError(ErrorKind),
     NetworkError(reqwest::Error),
@@ -48,7 +47,20 @@ impl Gallery {
 
         progress.set_title(format!("Downloading {} images", self.images.len()).as_str());
         for image in &self.images {
-            total += self.download_image(&image).unwrap_or(0);
+            let resp = self
+                .client
+                .get(image)
+                .send()
+                .map_err(|e| GalleryError::NetworkError(e))?;
+
+            let content = resp.text().map_err(|e| GalleryError::NetworkError(e))?;
+            let images = get_images(&content).map_err(|e| GalleryError::SearchError(e))?;
+
+            for image in images {
+                info!("Downloading {:?}", image);
+
+                total += self.download_image(&image)?;
+            }
         }
 
         Ok(total)
@@ -62,23 +74,29 @@ impl Gallery {
         )
         .map_err(|e| GalleryError::TempDirError(e.kind()))?;
 
+        info!("Created file on {:?}", savefile);
+
         let resp = self
             .client
             .get(image)
             .send()
             .map_err(|e| GalleryError::NetworkError(e))?;
 
+        debug!("DOWNLOAD GET {} => {}", resp.url(), resp.status());
+
         let len = resp.content_length().unwrap_or(0) as usize;
         let bytes = resp.bytes().map_err(|e| GalleryError::NetworkError(e))?;
         let mut progress = Bar::default();
         let mut downloaded = 0;
 
+        debug!("{len} bytes to write to {savefile:?}");
         for chunk in bytes.chunks(CHUNK_SIZE) {
             downloaded += savefile
                 .write(chunk)
                 .map_err(|e| GalleryError::WriteError(e.kind()))?;
 
             progress.set_progress(downloaded as f64 / bytes.len() as f64);
+            trace!("{}%", downloaded as f64 / bytes.len() as f64)
         }
 
         Ok(len)
@@ -97,10 +115,6 @@ where
         .collect::<Vec<String>>();
 
     debug!("{} galleries to get", galleries.len());
-
-    let mut spinner = Spin::default();
-    spinner.set_title("Spawning threads");
-
     let client = Client::new();
     let mut threads = vec![];
     for gallery in galleries {
@@ -139,22 +153,14 @@ where
 
             res
         }));
-
-        spinner.bump();
     }
 
     let mut galleries = vec![];
-    spinner.set_title("Finishing up");
     for thread in threads {
         if let Ok(gallery) = thread.join() {
             galleries.push(gallery);
         }
-        spinner.bump()
     }
-
-    spinner.println(format!("Downloading {} galleries", galleries.len()).as_str());
-    spinner.complete();
-
     Ok(galleries)
 }
 

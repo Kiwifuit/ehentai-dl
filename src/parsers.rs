@@ -9,7 +9,8 @@ const IMAGE_PARSER: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(
 //
 // The way of extracting the image is this:
 // Gallery -> Gallery Image Viewer -> Image
-const IMAGE_FILE_PARSER: &str = r"(?P<image>https://\w{7}.\w{12}.hath.network(:\d{5}/|/)h/.*\.jpg)";
+const IMAGE_FILE_PARSER: &str =
+    r"(https://\w{7}.\w{12}.hath.network(:\d*./|/)h/[a-zA-Z0-9\-/=;_]*.jpg)";
 
 #[derive(Debug)]
 pub struct Tags {
@@ -60,7 +61,7 @@ pub fn get_images(content: &String) -> Result<Vec<String>, regex::Error> {
     let mut images = vec![];
 
     for cap in parser.captures_iter(content) {
-        images.push(cap.get(0).unwrap().as_str().to_string())
+        images.push(cap.get(1).unwrap().as_str().to_string())
     }
 
     Ok(images)

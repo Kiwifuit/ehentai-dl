@@ -1,26 +1,29 @@
 // This one is for when we start communicating in channels
 #![allow(unused_must_use)]
 
-use std::fmt::Debug;
 use std::fs::read_to_string;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::path::Path;
 use std::string::FromUtf8Error;
 use std::thread::spawn;
+use std::{fmt::Debug, fs::OpenOptions};
 
 use crate::parsers::{get_galleries, get_tags, Tags};
 
 use log::debug;
 use reqwest::blocking::Client;
+use tempfile::NamedTempFile;
 use termprogress::prelude::*;
+
+const CHUNK_SIZE: usize = 1024;
 
 #[derive(Debug)]
 pub enum GalleryError {
-    OpenError(ErrorKind),
-    ReadError(ErrorKind),
+    WriteError(ErrorKind),
     DecodeError(FromUtf8Error),
 
-    DownloadError(reqwest::Error),
+    TempDirError(ErrorKind),
+    NetworkError(reqwest::Error),
 }
 
 #[derive(Debug)]
@@ -37,6 +40,48 @@ impl Gallery {
             images: vec![],
             client: Client::new(),
         }
+    }
+
+    pub fn download_images(&self) -> Result<usize, GalleryError> {
+        let mut total = 0;
+        let mut progress = Bar::default();
+
+        progress.set_title(format!("Downloading {} images", self.images.len()).as_str());
+        for image in &self.images {
+            total += self.download_image(&image).unwrap_or(0);
+        }
+
+        Ok(total)
+    }
+
+    fn download_image(&self, image: &String) -> Result<usize, GalleryError> {
+        let mut savefile = NamedTempFile::new_in(
+            self.tags
+                .get_tag("name")
+                .unwrap_or(&String::from("unknown")),
+        )
+        .map_err(|e| GalleryError::TempDirError(e.kind()))?;
+
+        let resp = self
+            .client
+            .get(image)
+            .send()
+            .map_err(|e| GalleryError::NetworkError(e))?;
+
+        let len = resp.content_length().unwrap_or(0) as usize;
+        let bytes = resp.bytes().map_err(|e| GalleryError::NetworkError(e))?;
+        let mut progress = Bar::default();
+        let mut downloaded = 0;
+
+        for chunk in bytes.chunks(CHUNK_SIZE) {
+            downloaded += savefile
+                .write(chunk)
+                .map_err(|e| GalleryError::WriteError(e.kind()))?;
+
+            progress.set_progress(downloaded as f64 / bytes.len() as f64);
+        }
+
+        Ok(len)
     }
 }
 

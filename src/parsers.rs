@@ -23,8 +23,12 @@ impl Tags {
         }
     }
 
-    pub fn add_tag(&mut self, name: String, value: String) {
-        self.tags.insert(name, value);
+    pub fn add_tag<F: ToString + Sized>(&mut self, name: F, value: F) {
+        self.tags.insert(name.to_string(), value.to_string());
+    }
+
+    pub fn get_tag<F: ToString + ?Sized>(&self, name: &F) -> Option<&String> {
+        self.tags.get(&name.to_string())
     }
 }
 

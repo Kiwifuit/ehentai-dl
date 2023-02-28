@@ -10,8 +10,9 @@ fn main() {
         exit(1)
     }
 
-    let gallery =
-        gallery::Gallery::new("https://e-hentai.org/g/2464032/fb37946900/".to_string(), 10);
+    let mut gallery = gallery::Gallery::new(10);
+
+    gallery.fetch_images("https://e-hentai.org/g/2473007/d2997e276f/");
 
     dbg!(gallery);
 }

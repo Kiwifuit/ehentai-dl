@@ -15,7 +15,6 @@ const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 pub enum GalleryError<'a> {
     NetworkError(reqwest::Error),
     EmptyResponseError(reqwest::Error),
-    IoError(ErrorKind),
     SelectorParseError(SelectorErrorKind<'a>),
     RegexError(regex::Error),
     NoCapture,
@@ -29,12 +28,30 @@ pub struct Gallery {
     total: usize,
     gallery: Vec<String>,
     client: Client,
+    thread_limit: u8,
+    running_threads: Arc<AtomicU8>,
 }
 
 impl Gallery {
-    pub fn new<'a>(url: String, thread_limit: u8) -> Result<Self, GalleryError<'a>> {
+    pub fn new(thread_limit: u8) -> Self {
         let client = Client::new();
-        let resp = get_page(&client, &url)?;
+        let running_threads = Arc::new(AtomicU8::new(0));
+
+        Self {
+            client,
+            gallery: vec![],
+            total: 0,
+            name: String::new(),
+            thread_limit,
+            running_threads,
+        }
+    }
+
+    pub fn fetch_images<'a, U>(&mut self, url: &U) -> Result<(), GalleryError<'a>>
+    where
+        U: ToString + ?Sized,
+    {
+        let resp = get_page(&self.client, &url.to_string())?;
 
         debug!("GET {:?} => {}", resp.url(), resp.status());
 
@@ -48,22 +65,26 @@ impl Gallery {
         let gallery = compile_selector("#gdt .gdtm div a")?;
         let total_pages_raw = compile_selector("p.gpc")?;
 
-        let title = get_title(&content.select(&title).next())?;
+        self.name = get_title(&content.select(&title).next())?;
         let total_pages = calculate_total_pages(&content.select(&total_pages_raw).next())?;
 
         info!(
             "Gallery {:?} has {} page(s) to download",
-            title, total_pages
+            self.name, total_pages
         );
 
-        let images = get_images(&total_pages, &url, &gallery, &client, thread_limit)?;
+        self.gallery = get_images(
+            &total_pages,
+            &url.to_string(),
+            &gallery,
+            &self.client,
+            &self.thread_limit,
+            &self.running_threads,
+        )?;
 
-        Ok(Self {
-            client,
-            gallery: images.clone(),
-            total: images.len(),
-            name: title,
-        })
+        self.total = self.gallery.len();
+
+        Ok(())
     }
 }
 
@@ -72,11 +93,12 @@ fn get_images<'a>(
     base_url: &String,
     selector: &Selector,
     client: &Client,
-    thread_limit: u8,
+    thread_limit: &u8,
+    thread_counter: &Arc<AtomicU8>,
 ) -> Result<Vec<String>, GalleryError<'a>> {
     let mut images = vec![];
     let mut image_workers = vec![];
-    let total_workers = Arc::new(AtomicU8::new(0));
+    let total_workers = Arc::clone(thread_counter);
 
     for i in 0..pages.clone() {
         let resp = get_page(client, &format!("{}?p={}", base_url, i))?;
@@ -97,7 +119,7 @@ fn get_images<'a>(
     info!("{} images to process", images.len());
 
     for image in images {
-        while total_workers.load(Ordering::Relaxed) >= thread_limit {
+        while total_workers.load(Ordering::Relaxed) >= *thread_limit {
             sleep(Duration::from_micros(20));
             warn!("Queue is full! Re-trying in 20ms");
         }
@@ -119,7 +141,6 @@ fn get_images<'a>(
             );
 
             let scraper = Selector::parse("img#img").expect("this selector to parse properly");
-
             tw.fetch_sub(1, Ordering::Acquire);
 
             if let Some(img) = html.select(&scraper).next() {

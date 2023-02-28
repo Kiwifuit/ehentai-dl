@@ -1,8 +1,8 @@
+use std::num::ParseIntError;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use std::{io::ErrorKind, num::ParseIntError};
 
 use log::{debug, info, warn};
 use regex::Regex;

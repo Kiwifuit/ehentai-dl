@@ -3,7 +3,6 @@
 //       I would want something like a -v flag
 //       but passing in more -v flags increases
 //       the verbosity
-use std::io::stdout;
 use std::path::PathBuf;
 
 use chrono::Local;
@@ -43,7 +42,6 @@ pub fn setup_logger(level: LogLevel) -> Result<(), String> {
                 msg
             ))
         })
-        .chain(stdout())
         .chain(
             log_file(get_log_file())
                 .map_err(|e| format!("An error occurred while trying to open file: {}", e))?,

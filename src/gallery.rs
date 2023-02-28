@@ -4,6 +4,7 @@ use log::{debug, info};
 use regex::Regex;
 use reqwest::blocking::{Client, Response};
 use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
+use threadpool::ThreadPool;
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 
@@ -25,10 +26,11 @@ pub struct Gallery {
     total: usize,
     gallery: Vec<String>,
     client: Client,
+    threads: ThreadPool,
 }
 
 impl Gallery {
-    pub fn new<'a>(url: String) -> Result<Self, GalleryError<'a>> {
+    pub fn new<'a>(url: String, thread_limit: usize) -> Result<Self, GalleryError<'a>> {
         let client = Client::new();
         let resp = get_page(&client, &url)?;
 
@@ -59,6 +61,7 @@ impl Gallery {
             gallery: images,
             total: total_pages * 40,
             name: title,
+            threads: ThreadPool::new(thread_limit),
         })
     }
 }

@@ -1,3 +1,8 @@
+#![allow(dead_code)]
+// TODO: Remove ^ when we start writing the CLI
+//       I would want something like a -v flag
+//       but passing in more -v flags increases
+//       the verbosity
 use std::io::stdout;
 use std::path::PathBuf;
 

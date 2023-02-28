@@ -1,10 +1,13 @@
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::Arc;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
 use std::{io::ErrorKind, num::ParseIntError};
 
-use log::{debug, info};
+use log::{debug, info, warn};
 use regex::Regex;
 use reqwest::blocking::{Client, Response};
 use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
-use threadpool::ThreadPool;
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 
@@ -26,11 +29,10 @@ pub struct Gallery {
     total: usize,
     gallery: Vec<String>,
     client: Client,
-    threads: ThreadPool,
 }
 
 impl Gallery {
-    pub fn new<'a>(url: String, thread_limit: usize) -> Result<Self, GalleryError<'a>> {
+    pub fn new<'a>(url: String, thread_limit: u8) -> Result<Self, GalleryError<'a>> {
         let client = Client::new();
         let resp = get_page(&client, &url)?;
 
@@ -54,14 +56,13 @@ impl Gallery {
             title, total_pages
         );
 
-        let images = get_images(&total_pages, &url, &gallery, &client)?;
+        let images = get_images(&total_pages, &url, &gallery, &client, thread_limit)?;
 
         Ok(Self {
             client,
-            gallery: images,
-            total: total_pages * 40,
+            gallery: images.clone(),
+            total: images.len(),
             name: title,
-            threads: ThreadPool::new(thread_limit),
         })
     }
 }
@@ -71,8 +72,11 @@ fn get_images<'a>(
     base_url: &String,
     selector: &Selector,
     client: &Client,
+    thread_limit: u8,
 ) -> Result<Vec<String>, GalleryError<'a>> {
-    let mut res = vec![];
+    let mut images = vec![];
+    let mut image_workers = vec![];
+    let total_workers = Arc::new(AtomicU8::new(0));
 
     for i in 0..pages.clone() {
         let resp = get_page(client, &format!("{}?p={}", base_url, i))?;
@@ -84,10 +88,53 @@ fn get_images<'a>(
                 .map_err(|e| GalleryError::EmptyResponseError(e))?,
         );
 
-        res.extend(
+        images.extend(
             html.select(selector)
                 .map(|elem| elem.value().attr("href").unwrap().to_string()),
         );
+    }
+
+    info!("{} images to process", images.len());
+
+    for image in images {
+        while total_workers.load(Ordering::Relaxed) >= thread_limit {
+            sleep(Duration::from_micros(20));
+            warn!("Queue is full! Re-trying in 20ms");
+        }
+
+        let tw = total_workers.clone();
+        let client = client.clone();
+        let image = image.clone();
+
+        image_workers.push(spawn(move || {
+            tw.fetch_add(1, Ordering::Acquire);
+
+            let resp = get_page(&client, &image).expect("this URL to respond");
+            debug!("GET {} => {}", resp.url(), resp.status());
+
+            let html = Html::parse_fragment(
+                &resp
+                    .text()
+                    .expect("the response from the GET to be non-zero"),
+            );
+
+            let scraper = Selector::parse("img#img").expect("this selector to parse properly");
+
+            tw.fetch_sub(1, Ordering::Acquire);
+
+            if let Some(img) = html.select(&scraper).next() {
+                img.value().attr("src").unwrap().to_string()
+            } else {
+                panic!("Expected to extract img, got nothing")
+            }
+        }));
+    }
+
+    let mut res = vec![];
+    for img_worker in image_workers {
+        if let Ok(url) = img_worker.join() {
+            res.push(url);
+        }
     }
 
     Ok(res)

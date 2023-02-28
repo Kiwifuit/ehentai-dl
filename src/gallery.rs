@@ -108,9 +108,9 @@ fn get_title<'a>(raw: &Option<ElementRef>) -> Result<String, GalleryError<'a>> {
 fn calculate_total_pages<'a>(raw: &Option<ElementRef>) -> Result<usize, GalleryError<'a>> {
     if let &Some(elememt) = raw {
         let raw = elememt.text().collect::<String>();
-        let (rendered, total) = parse_pagination(raw)?;
+        let total = parse_pagination(raw)?;
 
-        Ok(rendered / total)
+        Ok(total)
     } else {
         Err(GalleryError::EmptyError)
     }
@@ -120,18 +120,13 @@ fn compile_selector<'a>(sel: &'a str) -> Result<Selector, GalleryError<'a>> {
     Selector::parse(sel).map_err(|e| GalleryError::SelectorParseError(e))
 }
 
-fn parse_pagination<'a>(raw: String) -> Result<(usize, usize), GalleryError<'a>> {
+fn parse_pagination<'a>(raw: String) -> Result<usize, GalleryError<'a>> {
     let parser = Regex::new(PAGINATION_REGEX).map_err(|e| GalleryError::RegexError(e))?;
     let caps = parser
         .captures(raw.as_str())
         .ok_or(GalleryError::NoCapture)?;
 
-    Ok((
-        caps[1]
-            .parse::<usize>()
-            .map_err(|e| GalleryError::ParseError(e))?,
-        caps[2]
-            .parse::<usize>()
-            .map_err(|e| GalleryError::ParseError(e))?,
-    ))
+    Ok(caps[2]
+        .parse::<usize>()
+        .map_err(|e| GalleryError::ParseError(e))?)
 }

@@ -10,7 +10,7 @@ fn main() {
         exit(1)
     }
 
-    let gallery = gallery::Gallery::new("https://e-hentai.org/g/2264011/de4596c2f0/".to_string());
+    let gallery = gallery::Gallery::new("https://e-hentai.org/g/2464032/fb37946900/".to_string());
 
     dbg!(gallery);
 }

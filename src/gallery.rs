@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::fs::{create_dir, OpenOptions};
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::num::ParseIntError;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU8, Ordering};

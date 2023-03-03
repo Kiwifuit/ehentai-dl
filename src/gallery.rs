@@ -1,17 +1,17 @@
 use std::fmt::Display;
-use std::fs::OpenOptions;
+use std::fs::{create_dir, OpenOptions};
 use std::io::{self, Read, Write};
 use std::num::ParseIntError;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
-use std::thread::{sleep, spawn};
+use std::thread::{sleep, Builder};
 use std::time::Duration;
 
 use log::{debug, info, warn};
 use regex::Regex;
 use reqwest::blocking::{Client, Response};
 use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
-use tempfile::Builder;
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 const THREAD_SLEEP_DURATION: Duration = Duration::from_micros(20);
@@ -27,6 +27,7 @@ pub enum GalleryError<'a> {
     NoCapture,
     ParseError(ParseIntError),
     EmptyDataError(String),
+    ThreadError(usize, io::Error),
 }
 
 impl<'a> Display for GalleryError<'a> {
@@ -50,6 +51,8 @@ impl<'a> Display for GalleryError<'a> {
                 Self::ParseError(e) => format!("the parser returned an error: {}", e),
                 Self::EmptyResponseError(e) =>
                     format!("expected to have a response, got nothing but this: {}", e),
+                Self::ThreadError(img_no, e) =>
+                    format!("thread for image #{} returned an error: {}", img_no, e),
             }
         )
     }
@@ -125,15 +128,21 @@ impl Gallery {
         //       Multithreading is out of the question, since closure issues
         //       I forgot, but it's probably that.
         let mut total_downloaded = 0;
-        let save_dir = Builder::new()
-            .prefix(env!("CARGO_BIN_NAME"))
-            .tempdir()
-            .map_err(|e| GalleryError::IoError(e))?;
+        let save_dir = PathBuf::from(format!("./{}", self.name));
+        // Builder::new()
+        //     .prefix(env!("CARGO_BIN_NAME"))
+        //     .tempdir()
+        //     .map_err(|e| GalleryError::IoError(e))?;
+
+        if !save_dir.exists() {
+            warn!("Path {:?} doesn't exist, creating new folder...", save_dir);
+            create_dir(&save_dir).map_err(|e| GalleryError::IoError(e))?;
+        }
 
         for image in &self.gallery {
             let resp = get(&self.client, image)?;
 
-            let filename = save_dir.path().join(get_filename(&resp));
+            let filename = save_dir.join(get_filename(&resp));
 
             let mut file = OpenOptions::new()
                 .write(true)
@@ -146,6 +155,8 @@ impl Gallery {
 
                 info!("({}) Written chunk #{}", filename.display(), chunk_no);
             }
+
+            info!("({}) finished downloading", filename.display());
             // resp.copy_to(&mut file);
         }
 
@@ -192,37 +203,44 @@ fn get_images<'a>(
 
     info!("{} images to process", images.len());
 
-    for image in images {
+    for (img_no, image) in images.iter().enumerate() {
         while total_workers.load(Ordering::Relaxed) >= *thread_limit {
             sleep(THREAD_SLEEP_DURATION);
-            warn!("Queue is full! Re-trying in 20ms");
+            warn!(
+                "Queue is full! Re-trying in {}ms",
+                THREAD_SLEEP_DURATION.as_micros()
+            );
         }
 
         let tw = total_workers.clone();
         let client = client.clone();
         let image = image.clone();
+        let image_worker = Builder::new()
+            .name(format!("image #{}", img_no))
+            .spawn(move || {
+                tw.fetch_add(1, Ordering::Acquire);
 
-        image_workers.push(spawn(move || {
-            tw.fetch_add(1, Ordering::Acquire);
+                let resp = get(&client, &image).expect("this URL to respond");
+                debug!("GET {} => {}", resp.url(), resp.status());
 
-            let resp = get(&client, &image).expect("this URL to respond");
-            debug!("GET {} => {}", resp.url(), resp.status());
+                let html = Html::parse_fragment(
+                    &resp
+                        .text()
+                        .expect("the response from the GET to be non-zero"),
+                );
 
-            let html = Html::parse_fragment(
-                &resp
-                    .text()
-                    .expect("the response from the GET to be non-zero"),
-            );
+                let scraper = Selector::parse("img#img").expect("this selector to parse properly");
+                tw.fetch_sub(1, Ordering::Acquire);
 
-            let scraper = Selector::parse("img#img").expect("this selector to parse properly");
-            tw.fetch_sub(1, Ordering::Acquire);
+                if let Some(img) = html.select(&scraper).next() {
+                    img.value().attr("src").unwrap().to_string()
+                } else {
+                    panic!("Expected to extract img, got nothing")
+                }
+            })
+            .map_err(|e| GalleryError::ThreadError(img_no, e))?;
 
-            if let Some(img) = html.select(&scraper).next() {
-                img.value().attr("src").unwrap().to_string()
-            } else {
-                panic!("Expected to extract img, got nothing")
-            }
-        }));
+        image_workers.push(image_worker)
     }
 
     let mut res = vec![];

@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{self, Read, Write};
 use std::num::ParseIntError;
@@ -25,7 +26,33 @@ pub enum GalleryError<'a> {
     IoError(io::Error),
     NoCapture,
     ParseError(ParseIntError),
-    EmptyError,
+    EmptyDataError(String),
+}
+
+impl<'a> Display for GalleryError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NetworkError(e) => format!("an error occurred while downloading data: {}", e),
+                Self::EmptyDataError(e) => format!("{:?} was expected to be not empty, but is", e),
+                Self::SelectorParseError(e) =>
+                    format!("an error occurred while parsing scraper selectors: {}", e),
+                Self::RegexError(e) =>
+                    format!("an error occurred while trying to parse text: {}", e),
+                Self::IoError(e) => format!(
+                    "an error occurred while trying to read or write to a file: {}",
+                    e
+                ),
+                Self::NoCapture =>
+                    String::from("parser expected to capture something, got nothing"),
+                Self::ParseError(e) => format!("the parser returned an error: {}", e),
+                Self::EmptyResponseError(e) =>
+                    format!("expected to have a response, got nothing but this: {}", e),
+            }
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -219,7 +246,7 @@ fn get_title<'a>(raw: &Option<ElementRef>) -> Result<String, GalleryError<'a>> {
     if let &Some(element) = raw {
         Ok(element.text().collect::<String>())
     } else {
-        Err(GalleryError::EmptyError)
+        Err(GalleryError::EmptyDataError(String::from("title")))
     }
 }
 
@@ -230,7 +257,7 @@ fn calculate_total_pages<'a>(raw: &Option<ElementRef>) -> Result<usize, GalleryE
 
         Ok(total)
     } else {
-        Err(GalleryError::EmptyError)
+        Err(GalleryError::EmptyDataError(String::from("total-pages")))
     }
 }
 

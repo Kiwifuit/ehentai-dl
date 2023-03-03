@@ -12,7 +12,21 @@ fn main() {
 
     let mut gallery = gallery::Gallery::new(10);
 
-    gallery.fetch_images("https://e-hentai.org/g/2473007/d2997e276f/");
+    gallery
+        .fetch_images("https://e-hentai.org/g/2473007/d2997e276f/")
+        .map_err(|e| {
+            eprintln!("error while fetching images: {}", e);
 
-    dbg!(gallery);
+            exit(-1)
+        })
+        .unwrap();
+
+    gallery
+        .download_images()
+        .map_err(|e| {
+            eprintln!("error while download images: {}", e);
+
+            exit(-1)
+        })
+        .unwrap();
 }

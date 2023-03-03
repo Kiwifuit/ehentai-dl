@@ -1,3 +1,5 @@
+use std::fs::OpenOptions;
+use std::io::{self, Read, Write};
 use std::num::ParseIntError;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
@@ -8,8 +10,11 @@ use log::{debug, info, warn};
 use regex::Regex;
 use reqwest::blocking::{Client, Response};
 use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
+use tempfile::Builder;
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
+const THREAD_SLEEP_DURATION: Duration = Duration::from_micros(20);
+const CHUNK_SIZE: usize = 2048; // 2KB
 
 #[derive(Debug)]
 pub enum GalleryError<'a> {
@@ -17,6 +22,7 @@ pub enum GalleryError<'a> {
     EmptyResponseError(reqwest::Error),
     SelectorParseError(SelectorErrorKind<'a>),
     RegexError(regex::Error),
+    IoError(io::Error),
     NoCapture,
     ParseError(ParseIntError),
     EmptyError,
@@ -27,14 +33,14 @@ pub struct Gallery {
     name: String,
     total: usize,
     gallery: Vec<String>,
-    client: Client,
+    client: Arc<Client>,
     thread_limit: u8,
     running_threads: Arc<AtomicU8>,
 }
 
 impl Gallery {
     pub fn new(thread_limit: u8) -> Self {
-        let client = Client::new();
+        let client = Arc::new(Client::new());
         let running_threads = Arc::new(AtomicU8::new(0));
 
         Self {
@@ -51,7 +57,7 @@ impl Gallery {
     where
         U: ToString + ?Sized,
     {
-        let resp = get_page(&self.client, &url.to_string())?;
+        let resp = get(&self.client, &url.to_string())?;
 
         debug!("GET {:?} => {}", resp.url(), resp.status());
 
@@ -86,6 +92,47 @@ impl Gallery {
 
         Ok(())
     }
+
+    pub fn download_images(&self) -> Result<usize, GalleryError> {
+        // TODO: Maybe make this function async? At least make this faster
+        //       Multithreading is out of the question, since closure issues
+        //       I forgot, but it's probably that.
+        let mut total_downloaded = 0;
+        let save_dir = Builder::new()
+            .prefix(env!("CARGO_BIN_NAME"))
+            .tempdir()
+            .map_err(|e| GalleryError::IoError(e))?;
+
+        for image in &self.gallery {
+            let resp = get(&self.client, image)?;
+
+            let filename = save_dir.path().join(get_filename(&resp));
+
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(filename.clone())
+                .map_err(|e| GalleryError::IoError(e))?;
+
+            for (chunk_no, chunk) in resp.bytes().unwrap().chunks(CHUNK_SIZE).enumerate() {
+                total_downloaded += file.write(chunk).map_err(|e| GalleryError::IoError(e))?;
+
+                info!("({}) Written chunk #{}", filename.display(), chunk_no);
+            }
+            // resp.copy_to(&mut file);
+        }
+
+        info!("Written {} bytes total", total_downloaded);
+        Ok(total_downloaded)
+    }
+}
+
+fn get_filename(resp: &Response) -> &str {
+    resp.url()
+        .path_segments()
+        .and_then(|seg| seg.last())
+        .and_then(|name| if name.is_empty() { None } else { Some(name) })
+        .unwrap_or("unknown.bin")
 }
 
 fn get_images<'a>(
@@ -101,7 +148,7 @@ fn get_images<'a>(
     let total_workers = Arc::clone(thread_counter);
 
     for i in 0..pages.clone() {
-        let resp = get_page(client, &format!("{}?p={}", base_url, i))?;
+        let resp = get(client, &format!("{}?p={}", base_url, i))?;
         debug!("GET {:?} => {}", resp.url(), resp.status());
 
         let html = Html::parse_fragment(
@@ -120,7 +167,7 @@ fn get_images<'a>(
 
     for image in images {
         while total_workers.load(Ordering::Relaxed) >= *thread_limit {
-            sleep(Duration::from_micros(20));
+            sleep(THREAD_SLEEP_DURATION);
             warn!("Queue is full! Re-trying in 20ms");
         }
 
@@ -131,7 +178,7 @@ fn get_images<'a>(
         image_workers.push(spawn(move || {
             tw.fetch_add(1, Ordering::Acquire);
 
-            let resp = get_page(&client, &image).expect("this URL to respond");
+            let resp = get(&client, &image).expect("this URL to respond");
             debug!("GET {} => {}", resp.url(), resp.status());
 
             let html = Html::parse_fragment(
@@ -161,7 +208,7 @@ fn get_images<'a>(
     Ok(res)
 }
 
-fn get_page<'a>(client: &Client, url: &String) -> Result<Response, GalleryError<'a>> {
+fn get<'a>(client: &Client, url: &String) -> Result<Response, GalleryError<'a>> {
     Ok(client
         .get(url)
         .send()

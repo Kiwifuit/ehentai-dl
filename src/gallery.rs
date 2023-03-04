@@ -16,7 +16,7 @@ use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 const THREAD_SLEEP_DURATION: Duration = Duration::from_micros(20);
 const CHUNK_SIZE: usize = 2048; // 2KB
-const RETRY_LIMIT: u8 = 4;
+const FILENAME_LENGTH: usize = 12;
 
 #[derive(Debug)]
 pub enum GalleryError<'a> {
@@ -168,12 +168,18 @@ impl Gallery {
     }
 }
 
-fn get_filename(resp: &Response) -> &str {
-    resp.url()
+fn get_filename(resp: &Response) -> String {
+    // TODO: Maybe use the filename in the page,
+    //       but I believe at this stage that option
+    //       is not viable
+    let raw = resp
+        .url()
         .path_segments()
         .and_then(|seg| seg.last())
         .and_then(|name| if name.is_empty() { None } else { Some(name) })
-        .unwrap_or("unknown.bin")
+        .unwrap_or("unknown.bin");
+
+    String::from(&raw[..FILENAME_LENGTH]) + &raw[raw.find(".").unwrap()..]
 }
 
 fn get_images<'a>(

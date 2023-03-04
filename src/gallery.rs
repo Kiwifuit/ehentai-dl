@@ -292,7 +292,12 @@ fn parse_pagination<'a>(raw: String) -> Result<usize, GalleryError<'a>> {
         .captures(raw.as_str())
         .ok_or(GalleryError::NoCapture)?;
 
-    Ok(caps[2]
+    let total = caps[2]
         .parse::<usize>()
-        .map_err(|e| GalleryError::ParseError(e))?)
+        .map_err(|e| GalleryError::ParseError(e))?;
+    let rendered = caps[1]
+        .parse::<usize>()
+        .map_err(|e| GalleryError::ParseError(e))?;
+
+    Ok(rendered / total)
 }

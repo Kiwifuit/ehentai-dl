@@ -1,3 +1,4 @@
 /target
 /notes
 /Cargo.lock
+*.log

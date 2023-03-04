@@ -16,6 +16,7 @@ use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 const THREAD_SLEEP_DURATION: Duration = Duration::from_micros(20);
 const CHUNK_SIZE: usize = 2048; // 2KB
+const RETRY_LIMIT: u8 = 4;
 
 #[derive(Debug)]
 pub enum GalleryError<'a> {
@@ -129,10 +130,6 @@ impl Gallery {
         //       I forgot, but it's probably that.
         let mut total_downloaded = 0;
         let save_dir = PathBuf::from(format!("./{}", self.name));
-        // Builder::new()
-        //     .prefix(env!("CARGO_BIN_NAME"))
-        //     .tempdir()
-        //     .map_err(|e| GalleryError::IoError(e))?;
 
         if !save_dir.exists() {
             warn!("Path {:?} doesn't exist, creating new folder...", save_dir);
@@ -141,23 +138,29 @@ impl Gallery {
 
         for image in &self.gallery {
             let resp = get(&self.client, image)?;
-
             let filename = save_dir.join(get_filename(&resp));
-
             let mut file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
                 .open(filename.clone())
                 .map_err(|e| GalleryError::IoError(e))?;
 
-            for (chunk_no, chunk) in resp.bytes().unwrap().chunks(CHUNK_SIZE).enumerate() {
-                total_downloaded += file.write(chunk).map_err(|e| GalleryError::IoError(e))?;
+            let mut downloaded = 0;
+            // TODO: Make this line retry-able
+            let bytes = resp.bytes().map_err(|e| GalleryError::NetworkError(e))?;
 
-                info!("({}) Written chunk #{}", filename.display(), chunk_no);
+            for (chunk_no, chunk) in bytes.chunks(CHUNK_SIZE).enumerate() {
+                downloaded += file.write(chunk).map_err(|e| GalleryError::IoError(e))?;
+
+                debug!("({:?}) Written chunk #{}", filename.display(), chunk_no);
             }
 
-            info!("({}) finished downloading", filename.display());
-            // resp.copy_to(&mut file);
+            info!(
+                "({:?}) finished downloading (downloaded {} bytes)",
+                filename.display(),
+                downloaded
+            );
+            total_downloaded += downloaded;
         }
 
         info!("Written {} bytes total", total_downloaded);

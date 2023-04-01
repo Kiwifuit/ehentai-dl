@@ -5,7 +5,7 @@ mod logger;
 mod parsers;
 
 fn main() {
-    if let Err(msg) = logger::setup_logger(logger::LogLevel::Info) {
+    if let Err(msg) = logger::setup_logger(logger::LogLevel::Trace) {
         eprintln!("{msg}");
         exit(1)
     }

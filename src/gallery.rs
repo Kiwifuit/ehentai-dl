@@ -12,6 +12,7 @@ use log::{debug, info, warn};
 use regex::Regex;
 use reqwest::blocking::{Client, Response};
 use scraper::{error::SelectorErrorKind, ElementRef, Html, Selector};
+use termprogress::prelude::*;
 
 const PAGINATION_REGEX: &str = r"Showing 1 - (\d+) of (\d+)";
 const THREAD_SLEEP_DURATION: Duration = Duration::from_micros(20);
@@ -136,9 +137,12 @@ impl Gallery {
             create_dir(&save_dir).map_err(|e| GalleryError::IoError(e))?;
         }
 
-        for image in &self.gallery {
+        let mut download_bar = Bar::with_title(50, "Downloading images");
+        for (indx, image) in self.gallery.iter().enumerate() {
+            let filename = save_dir.join(get_filename(&image));
+            let mut download_progress = Bar::with_title(50, format!("Downloading {:?}", filename));
+            
             let resp = get(&self.client, image)?;
-            let filename = save_dir.join(get_filename(&resp));
             let mut file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -146,14 +150,24 @@ impl Gallery {
                 .map_err(|e| GalleryError::IoError(e))?;
 
             let mut downloaded = 0;
+            let total = resp.content_length().unwrap();
+
             // TODO: Make this line retry-able
             let bytes = resp.bytes().map_err(|e| GalleryError::NetworkError(e))?;
 
             for (chunk_no, chunk) in bytes.chunks(CHUNK_SIZE).enumerate() {
-                downloaded += file.write(chunk).map_err(|e| GalleryError::IoError(e))?;
+                let bytes_written = file.write(chunk).map_err(|e| GalleryError::IoError(e))?;
+                downloaded += bytes_written;
 
-                debug!("({:?}) Written chunk #{}", filename.display(), chunk_no);
+                debug!(
+                    "({:?}) Written chunk #{} ({} bytes)",
+                    filename.display(),
+                    chunk_no,
+                    bytes_written
+                );
+                download_progress.set_progress(downloaded as f64 / total as f64);
             }
+            download_progress.complete();
 
             info!(
                 "({:?}) finished downloading (downloaded {} bytes)",
@@ -161,23 +175,20 @@ impl Gallery {
                 downloaded
             );
             total_downloaded += downloaded;
+            download_bar.set_progress(indx as f64 / self.gallery.len() as f64)
         }
+        download_bar.complete();
 
         info!("Written {} bytes total", total_downloaded);
         Ok(total_downloaded)
     }
 }
 
-fn get_filename(resp: &Response) -> String {
+fn get_filename(resp: &String) -> String {
     // TODO: Maybe use the filename in the page,
     //       but I believe at this stage that option
     //       is not viable
-    let raw = resp
-        .url()
-        .path_segments()
-        .and_then(|seg| seg.last())
-        .and_then(|name| if name.is_empty() { None } else { Some(name) })
-        .unwrap_or("unknown.bin");
+    let raw = resp.split("/").last().unwrap_or("unknown.bin");
 
     String::from(&raw[..FILENAME_LENGTH]) + &raw[raw.find(".").unwrap()..]
 }
@@ -194,6 +205,7 @@ fn get_images<'a>(
     let mut image_workers = vec![];
     let total_workers = Arc::clone(thread_counter);
 
+    let mut fetch_prog = Spin::default();
     for i in 0..pages.clone() {
         let resp = get(client, &format!("{}?p={}", base_url, i))?;
         debug!("GET {:?} => {}", resp.url(), resp.status());
@@ -212,6 +224,7 @@ fn get_images<'a>(
 
     info!("{} images to process", images.len());
 
+    let mut image_prog = Bar::with_title(50, "Fetching image URLs");
     for (img_no, image) in images.iter().enumerate() {
         while total_workers.load(Ordering::Relaxed) >= *thread_limit {
             sleep(THREAD_SLEEP_DURATION);
@@ -249,8 +262,10 @@ fn get_images<'a>(
             })
             .map_err(|e| GalleryError::ThreadError(img_no, e))?;
 
-        image_workers.push(image_worker)
+        image_workers.push(image_worker);
+        image_prog.set_progress(img_no as f64 / images.len() as f64);
     }
+    image_prog.complete();
 
     let mut res = vec![];
     for img_worker in image_workers {
@@ -278,8 +293,8 @@ fn get_title<'a>(raw: &Option<ElementRef>) -> Result<String, GalleryError<'a>> {
 }
 
 fn calculate_total_pages<'a>(raw: &Option<ElementRef>) -> Result<usize, GalleryError<'a>> {
-    if let &Some(elememt) = raw {
-        let raw = elememt.text().collect::<String>();
+    if let &Some(element) = raw {
+        let raw = element.text().collect::<String>();
         let total = parse_pagination(raw)?;
 
         Ok(total)

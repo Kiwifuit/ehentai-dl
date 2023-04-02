@@ -67,7 +67,7 @@ where
             .take(bytes_read)
             .map(|i| *i)
             .collect::<Vec<u8>>();
-        debug!("Read {}/{} bytes", bytes_read, CHUNK_SIZE);
+        debug!("read {}/{} bytes", bytes_read, CHUNK_SIZE);
         res += &String::from_utf8(bytes).map_err(|e| ParseError::StringEncodeError(e))?;
     }
 

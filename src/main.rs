@@ -10,8 +10,14 @@ fn main() {
     logger::setup_logger(logger::LogLevel::Debug)
         .expect("unexpected error whie starting the logger");
 
-    let a = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
-    let g = parser::get_all_galleries(&a).unwrap();
+    let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
+    let galleries = parser::get_all_galleries(&raw).unwrap();
 
-    info!("{} galleries to download", g.len());
+    info!("{} galleries to download", galleries.len());
+    for gallery in galleries {
+        info!("fetching data for {:?}", gallery);
+        let html = extractor::get_html(gallery);
+
+        dbg!(html);
+    }
 }

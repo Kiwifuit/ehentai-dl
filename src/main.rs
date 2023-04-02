@@ -3,6 +3,7 @@ use log::info;
 mod extractor;
 mod logger;
 mod parser;
+mod gallery;
 
 const CHUNK_SIZE: usize = 1024;
 

@@ -1,9 +1,11 @@
 use log::info;
 
+#[macro_use]
+mod macros;
 mod extractor;
+mod gallery;
 mod logger;
 mod parser;
-mod gallery;
 
 const CHUNK_SIZE: usize = 1024;
 

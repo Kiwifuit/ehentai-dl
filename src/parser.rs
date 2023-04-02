@@ -1,13 +1,12 @@
 use log::debug;
-use regex::Regex;
 use std::ffi::OsStr;
 use std::fs::OpenOptions;
 use std::io::{self, prelude::*};
 use std::path::Path;
 use std::sync::mpsc::{self, SyncSender};
-use std::{string, thread};
+use std::{num, string, thread};
 
-const GALLERY_PARSER: &str = r"https://e-hentai\.org/g/(\d{7})/([a-z0-9]{10})";
+type Pagination = u8;
 
 #[derive(Debug)]
 /// Wraps various errors into one. `C` is generally used for
@@ -20,6 +19,8 @@ pub enum ParseError<const C: usize> {
     ChannelError(mpsc::SendError<([u8; C], usize)>),
     RegexParseError(regex::Error),
     StringEncodeError(string::FromUtf8Error),
+    NoCapture,
+    IntParseError(num::ParseIntError),
 }
 
 /// Loads a file chunk by chunk and sends it via `tx`, along with how many
@@ -75,7 +76,7 @@ where
 }
 
 pub fn get_all_galleries(raw: &String) -> Result<Vec<String>, ParseError<0>> {
-    let parser = Regex::new(GALLERY_PARSER).map_err(|e| ParseError::RegexParseError(e))?;
+    let parser = compile! {regex r"https://e-hentai\.org/g/(\d{7})/([a-z0-9]{10})"}?;
 
     Ok(parser
         .captures_iter(raw)
@@ -83,4 +84,24 @@ pub fn get_all_galleries(raw: &String) -> Result<Vec<String>, ParseError<0>> {
         // that there'll be a 0th element
         .map(|e| e.get(0).unwrap().as_str().to_string())
         .collect::<Vec<String>>())
+}
+
+pub fn get_pagination(raw: &String) -> Result<Pagination, ParseError<0>> {
+    let parser = compile! {regex r"Showing 1 - (\d+) of (\d+)"}?;
+    let caps = parser.captures(raw.as_str()).ok_or(ParseError::NoCapture)?;
+
+    let total = caps[2]
+        .parse::<Pagination>()
+        .map_err(|e| ParseError::IntParseError(e))?;
+    let rendered = caps[1]
+        .parse::<Pagination>()
+        .map_err(|e| ParseError::IntParseError(e))?;
+
+    Ok(rendered / total)
+}
+
+pub fn get_filename(raw: &String) -> Result<String, ParseError<0>> {
+    let parser = compile! {regex r"([\w\d.]*) :: ([\dx ]*) :: ([\d.]* \w*)"}?;
+
+    Ok(parser.captures(raw).ok_or(ParseError::NoCapture)?[1].to_string())
 }

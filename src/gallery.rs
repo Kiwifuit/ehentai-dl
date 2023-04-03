@@ -4,11 +4,26 @@ pub struct Gallery {
     title: String,
     pages: u8,
     images: Vec<Image>,
+    tags: Vec<Tag>,
 }
 
 pub struct Image {
     url: String,
     file: String,
+}
+
+pub struct Tag {
+    t_type: TagType,
+    t_val: String,
+}
+pub enum TagType {
+    ReClass,
+    Parody,
+    Character,
+    Artist,
+    Male,
+    Female,
+    Other,
 }
 
 impl Gallery {
@@ -19,6 +34,15 @@ impl Gallery {
     pub fn add_image(&mut self, image: Image) {
         self.pages += 1;
         self.images.push(image);
+    }
+
+    pub fn add_tag(&mut self, name: String, value: String) {
+        let tag = Tag {
+            t_type: name.into(),
+            t_val: value,
+        };
+
+        self.tags.push(tag);
     }
 
     pub fn title(&self) -> &String {
@@ -51,5 +75,19 @@ impl<'a> From<ElementRef<'a>> for Image {
     fn from(value: ElementRef) -> Self {
         let url = value.value().attr("href").unwrap().to_string();
         Self::new(&url)
+    }
+}
+
+impl From<String> for TagType {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "reclass" => Self::ReClass,
+            "parody" => Self::Parody,
+            "character" => Self::Character,
+            "artist" => Self::Artist,
+            "male" => Self::Male,
+            "female" => Self::Female,
+            "other" | _ => Self::Other,
+        }
     }
 }

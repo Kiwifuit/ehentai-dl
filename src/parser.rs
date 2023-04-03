@@ -6,6 +6,8 @@ use std::path::Path;
 use std::sync::mpsc::{self, SyncSender};
 use std::{num, string, thread};
 
+use crate::gallery;
+
 type Pagination = u8;
 
 #[derive(Debug)]

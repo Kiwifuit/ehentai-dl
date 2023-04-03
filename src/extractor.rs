@@ -2,14 +2,11 @@ use std::{fmt::Display, string};
 
 use log::debug;
 use reqwest::{blocking::get, IntoUrl};
-use scraper::{Html, Selector};
+use scraper::Html;
 
 use crate::gallery;
 
-const FILENAME_TAG: &str = "div#i1.sni div#i4 div";
-const IMAGE_TAG: &str = "div#i1.sni div#i3 a img#img";
 const IMAGE_LINK_EXTRACTOR: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(\d+)";
-const GALLERY_TAG_TAG: &str = "div#taglist table tbody tr";
 
 #[derive(Debug)]
 pub enum ExtractionError<'a> {
@@ -85,8 +82,10 @@ pub fn get_images<'a>(
     Ok(images)
 }
 
-pub fn get_image_filename<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
-    let html = get_html(image.get_url())?;
+pub fn get_image_filename<'a>(
+    image: &mut gallery::Image,
+    html: &Html,
+) -> Result<(), ExtractionError<'a>> {
     let sel = compile! { selector "div#i2 div" }?;
 
     let filename_raw = html
@@ -100,5 +99,31 @@ pub fn get_image_filename<'a>(image: &mut gallery::Image) -> Result<(), Extracti
         .map_err(|e| ExtractionError::DataParseError(e))?;
 
     image.set_filename(filename);
+    Ok(())
+}
+
+pub fn get_tags<'a>(
+    gallery: &mut gallery::Gallery,
+    html: &Html,
+) -> Result<(), ExtractionError<'a>> {
+    let tag_types = compile! { selector "div#taglist table tbody tr" }?;
+    let tag_name = compile! { selector "tr td" }?;
+    let tag_value = compile! { selector "tr td div a" }?;
+
+    for tag_type in html.select(&tag_types) {
+        let mut tag = tag_type.select(&tag_name);
+        let tag_name = tag
+            .next()
+            .unwrap()
+            .text()
+            .skip_while(|c| c.contains(":"))
+            .collect::<String>();
+
+        for raw in tag {
+            let tag_value = raw.select(&tag_value).nth(0).unwrap().text().collect();
+            gallery.add_tag(tag_name.clone(), tag_value);
+        }
+    }
+
     Ok(())
 }

@@ -102,7 +102,7 @@ pub fn get_images<'a>(
             // dbg!(url);
             let mut image = gallery::Image::new(&url);
 
-            get_image_filename(&mut image)?;
+            get_image_data(&mut image)?;
             gallery.add_image(image);
         }
     }
@@ -110,12 +110,23 @@ pub fn get_images<'a>(
     Ok(())
 }
 
-pub fn get_image_filename<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
+pub fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
     let html = get_html(image.get_url())?;
-    let sel = compile! { selector "div#i2 div" }?;
+    let filename = compile! { selector "div#i2 div" }?;
+    let image_url = compile! { selector "div#i3 a img" }?;
+    let url = html
+        .select(&image_url)
+        .nth(0)
+        .unwrap()
+        .value()
+        .attr("src")
+        .unwrap()
+        .to_string();
+
+    image.set_url(url);
 
     let filename_raw = html
-        .select(&sel)
+        .select(&filename)
         .nth(2) // the 1st is the nav bar
         .ok_or(ExtractionError::EmptyData("filename"))?
         .text()

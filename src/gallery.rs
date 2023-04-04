@@ -79,6 +79,10 @@ impl Image {
         &self.file
     }
 
+    pub fn set_url(&mut self, url: String) {
+        self.url = url;
+    }
+
     pub fn get_url(&self) -> &String {
         &self.url
     }

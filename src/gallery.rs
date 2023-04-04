@@ -1,5 +1,6 @@
 use scraper::ElementRef;
 
+#[derive(Debug)]
 pub struct Gallery {
     title: String,
     pages: u8,
@@ -7,15 +8,18 @@ pub struct Gallery {
     tags: Vec<Tag>,
 }
 
+#[derive(Debug)]
 pub struct Image {
     url: String,
     file: String,
 }
 
+#[derive(Debug)]
 pub struct Tag {
     t_type: TagType,
     t_val: String,
 }
+#[derive(Debug)]
 pub enum TagType {
     ReClass,
     Parody,
@@ -27,6 +31,15 @@ pub enum TagType {
 }
 
 impl Gallery {
+    pub fn new() -> Self {
+        Self {
+            title: String::new(),
+            pages: 0,
+            images: vec![],
+            tags: vec![],
+        }
+    }
+
     pub fn set_title(&mut self, title: String) {
         self.title = title;
     }

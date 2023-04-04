@@ -8,7 +8,7 @@ use std::{num, string, thread};
 
 use crate::gallery;
 
-type Pagination = u8;
+type Pagination = f32;
 
 #[derive(Debug)]
 /// Wraps various errors into one. `C` is generally used for
@@ -22,7 +22,7 @@ pub enum ParseError<const C: usize> {
     RegexParseError(regex::Error),
     StringEncodeError(string::FromUtf8Error),
     NoCapture,
-    IntParseError(num::ParseIntError),
+    IntParseError(num::ParseFloatError),
 }
 
 /// Loads a file chunk by chunk and sends it via `tx`, along with how many
@@ -99,7 +99,7 @@ pub fn get_pagination(raw: &String) -> Result<Pagination, ParseError<0>> {
         .parse::<Pagination>()
         .map_err(|e| ParseError::IntParseError(e))?;
 
-    Ok(rendered / total)
+    Ok(total / rendered)
 }
 
 pub fn get_filename(raw: &String) -> Result<String, ParseError<0>> {

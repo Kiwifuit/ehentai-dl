@@ -1,12 +1,13 @@
-use std::{fmt::Display, string};
+use std::{
+    fmt::{Debug, Display},
+    string,
+};
 
-use log::debug;
+use log::{debug, info};
 use reqwest::{blocking::get, IntoUrl};
 use scraper::Html;
 
 use crate::gallery;
-
-const IMAGE_LINK_EXTRACTOR: &str = r"https://e-hentai\.org/s/([a-z0-9]{10})/([0-9]{7})-(\d+)";
 
 #[derive(Debug)]
 pub enum ExtractionError<'a> {
@@ -37,6 +38,26 @@ where
     Ok(html)
 }
 
+pub fn get_gallery<'a, U>(url: &'a U) -> Result<gallery::Gallery, ExtractionError<'a>>
+where
+    U: Debug + Display + ToString + ?Sized,
+    &'a U: IntoUrl + 'a,
+{
+    let mut gallery = gallery::Gallery::new();
+
+    info!("Extracting info for {:?}", url);
+    let html = get_html(url)?;
+
+    let pages = get_pages(&html)?;
+    info!("{} page(s) to download", pages);
+
+    get_title(&mut gallery, &html)?;
+    get_tags(&mut gallery, &html)?;
+    get_images(&pages, &url.to_string(), &mut gallery)?;
+
+    Ok(gallery)
+}
+
 pub fn get_title<'a>(
     gallery: &mut gallery::Gallery,
     html: &Html,
@@ -52,45 +73,50 @@ pub fn get_title<'a>(
     }
 }
 
-pub fn get_pages<'a>(html: &Html) -> Result<u8, ExtractionError<'a>> {
+fn get_pages<'a>(html: &Html) -> Result<u8, ExtractionError<'a>> {
     let sel = compile!(selector "p.gpc")?;
     let pages_raw = html
         .select(&sel)
         .next()
         .ok_or(ExtractionError::EmptyData("page count"))?;
 
-    Ok(
-        crate::parser::get_pagination(&pages_raw.text().collect::<String>())
-            .map_err(|e| ExtractionError::DataParseError(e))?,
-    )
+    let pagination = crate::parser::get_pagination(&pages_raw.text().collect::<String>())
+        .map_err(|e| ExtractionError::DataParseError(e))?;
+
+    Ok(pagination.round() as u8)
 }
 
 pub fn get_images<'a>(
     pages: &u8,
     gallery_url: &String,
-) -> Result<Vec<gallery::Image>, ExtractionError<'a>> {
-    let mut images = vec![];
-    let sel = compile!(selector "#gdt .gdtm div a")?;
+    gallery: &mut gallery::Gallery,
+) -> Result<(), ExtractionError<'a>> {
+    let sel = compile!(selector "div#gdt div.gdtm div a")?;
 
-    for i in 1..*pages {
+    for i in 0..*pages {
         let url = format!("{}?p={}", gallery_url, i);
         let html = get_html(url)?;
 
-        images.extend(html.select(&sel).map(|e| gallery::Image::from(e)));
+        for image in html.select(&sel) {
+            let url = image.value().attr("href").unwrap().to_string();
+            // dbg!(url);
+            let mut image = gallery::Image::new(&url);
+
+            get_image_filename(&mut image)?;
+            gallery.add_image(image);
+        }
     }
 
-    Ok(images)
+    Ok(())
 }
 
-pub fn get_image_filename<'a>(
-    image: &mut gallery::Image,
-    html: &Html,
-) -> Result<(), ExtractionError<'a>> {
+pub fn get_image_filename<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
+    let html = get_html(image.get_url())?;
     let sel = compile! { selector "div#i2 div" }?;
 
     let filename_raw = html
         .select(&sel)
-        .nth(1) // the 0th is the nav bar
+        .nth(2) // the 1st is the nav bar
         .ok_or(ExtractionError::EmptyData("filename"))?
         .text()
         .collect::<String>();

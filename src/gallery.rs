@@ -3,7 +3,7 @@ use scraper::ElementRef;
 #[derive(Debug)]
 pub struct Gallery {
     title: String,
-    pages: u8,
+    image_count: u8,
     images: Vec<Image>,
     tags: Vec<Tag>,
 }
@@ -35,7 +35,7 @@ impl Gallery {
     pub fn new() -> Self {
         Self {
             title: String::new(),
-            pages: 0,
+            image_count: 0,
             images: vec![],
             tags: vec![],
         }
@@ -46,7 +46,7 @@ impl Gallery {
     }
 
     pub fn add_image(&mut self, image: Image) {
-        self.pages += 1;
+        self.image_count += 1;
         self.images.push(image);
     }
 

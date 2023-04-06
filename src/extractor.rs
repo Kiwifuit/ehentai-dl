@@ -152,7 +152,7 @@ pub fn get_tags<'a>(
             .next()
             .unwrap()
             .text()
-            .skip_while(|c| c.contains(":"))
+            .map(|c| &c[..c.len() - 1])
             .collect::<String>();
 
         for raw in tag {

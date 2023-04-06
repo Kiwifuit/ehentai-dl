@@ -83,7 +83,10 @@ fn get_pages<'a>(html: &Html) -> Result<u8, ExtractionError<'a>> {
     let pagination = crate::parser::get_pagination(&pages_raw.text().collect::<String>())
         .map_err(|e| ExtractionError::DataParseError(e))?;
 
-    Ok(pagination.round() as u8)
+    // we use .ceil instead of .round because we want even 1.1 to
+    // get considered as 2.0, .ceil achieves this function while
+    // .round, well, rounds it off to 1.0
+    Ok(pagination.ceil() as u8)
 }
 
 pub fn get_images<'a>(

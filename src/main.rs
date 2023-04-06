@@ -13,18 +13,12 @@ fn main() {
     logger::setup_logger(logger::LogLevel::Debug)
         .expect("unexpected error whie starting the logger");
 
-    // let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
-    // let galleries = parser::get_all_galleries(&raw).unwrap();
+    let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
+    let galleries = parser::get_all_galleries(&raw).unwrap();
 
-    // info!("{} galleries to download", galleries.len());
-    // for gallery in galleries {
-    //     info!("fetching data for {:?}", gallery);
-    //     let html = extractor::get_html(gallery);
-
-    //     dbg!(html);
-    // }
-
-    let gallery = extractor::get_gallery("https://e-hentai.org/g/2264011/de4596c2f0/");
-
-    dbg!(gallery);
+    info!("{} galleries to download", galleries.len());
+    for gallery in galleries {
+        info!("fetching data for {:?}", gallery);
+        let gallery = extractor::get_gallery(&gallery);
+    }
 }

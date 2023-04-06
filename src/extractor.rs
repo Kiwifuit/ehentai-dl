@@ -99,7 +99,6 @@ pub fn get_images<'a>(
 
         for image in html.select(&sel) {
             let url = image.value().attr("href").unwrap().to_string();
-            // dbg!(url);
             let mut image = gallery::Image::new(&url);
 
             get_image_data(&mut image)?;

@@ -7,7 +7,7 @@ use log::{debug, info};
 use reqwest::{blocking::get, IntoUrl};
 use scraper::Html;
 
-use crate::gallery;
+use crate::{gallery, progress::Progress};
 
 #[derive(Debug)]
 pub enum ExtractionError<'a> {
@@ -38,12 +38,16 @@ where
     Ok(html)
 }
 
-pub fn get_gallery<'a, U>(url: &'a U) -> Result<gallery::Gallery, ExtractionError<'a>>
+pub fn get_gallery<'a, U>(
+    url: &'a U,
+    progress: &Progress,
+) -> Result<gallery::Gallery, ExtractionError<'a>>
 where
     U: Debug + Display + ToString + ?Sized,
     &'a U: IntoUrl + 'a,
 {
     let mut gallery = gallery::Gallery::new();
+    let overall_progress = progress.add_prog(3, "Getting info for gallery");
 
     info!("Extracting info for {:?}", url);
     let html = get_html(url)?;
@@ -51,9 +55,20 @@ where
     let pages = get_pages(&html)?;
     info!("{} page(s) to download", pages);
 
+    overall_progress.set_message("title");
     get_title(&mut gallery, &html)?;
+    overall_progress.inc(1);
+
+    overall_progress.set_message("tags");
     get_tags(&mut gallery, &html)?;
-    get_images(&pages, &url.to_string(), &mut gallery)?;
+    overall_progress.inc(1);
+
+    overall_progress.set_message("images");
+    get_images(&pages, &url.to_string(), &mut gallery, &progress)?;
+    overall_progress.inc(1);
+
+    overall_progress.set_message("");
+    overall_progress.finish();
 
     Ok(gallery)
 }
@@ -93,20 +108,29 @@ pub fn get_images<'a>(
     pages: &u8,
     gallery_url: &String,
     gallery: &mut gallery::Gallery,
+    progress: &Progress,
 ) -> Result<(), ExtractionError<'a>> {
     let sel = compile!(selector "div#gdt div.gdtm div a")?;
 
     for i in 0..*pages {
         let url = format!("{}?p={}", gallery_url, i);
         let html = get_html(url)?;
+        let images = html.select(&sel).collect::<Vec<scraper::ElementRef>>();
 
-        for image in html.select(&sel) {
+        let prog = progress.add_prog(
+            images.len() as u64,
+            format!("Extracting image data (page {} of {})", i + 1, pages),
+        );
+
+        for image in images {
             let url = image.value().attr("href").unwrap().to_string();
             let mut image = gallery::Image::new(&url);
 
             get_image_data(&mut image)?;
             gallery.add_image(image);
+            prog.inc(1);
         }
+        prog.finish();
     }
 
     Ok(())

@@ -49,6 +49,7 @@ where
     let mut gallery = gallery::Gallery::new();
     let overall_progress = progress.add_prog(3, "Getting info for gallery");
 
+    overall_progress.set_message("webpage");
     info!("Extracting info for {:?}", url);
     let html = get_html(url)?;
 
@@ -68,7 +69,7 @@ where
     overall_progress.inc(1);
 
     overall_progress.set_message("");
-    overall_progress.finish();
+    overall_progress.finish_and_clear();
 
     Ok(gallery)
 }
@@ -130,7 +131,7 @@ pub fn get_images<'a>(
             gallery.add_image(image);
             prog.inc(1);
         }
-        prog.finish();
+        prog.finish_and_clear();
     }
 
     Ok(())

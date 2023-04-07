@@ -3,7 +3,7 @@ use std::{borrow::Cow, fmt::Debug};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::info;
 
-const PROGBAR_STYLE: &str = "{prefix} [{wide_bar}] {msg} ({percent:.cyan}%)";
+const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} ({percent:.cyan}%)";
 
 pub struct Progress {
     master: MultiProgress,

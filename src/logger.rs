@@ -47,6 +47,13 @@ pub fn setup_logger(level: LogLevel) -> Result<(), String> {
                 .map_err(|e| format!("An error occurred while trying to open file: {}", e))?,
         )
         .level(level.into())
+        // We deactivate the logs for certain crates (and the
+        // 'blocking' module) because they alone puff up the
+        // logfile size from 38K (with all of these off) to
+        // 1.5G
+        .level_for("html5ever", LevelFilter::Off)
+        .level_for("selectors", LevelFilter::Off)
+        .level_for("reqwest::blocking", LevelFilter::Off)
         .apply()
         .map_err(|e| format!("An error occurred while trying to set up the logger: {}", e))?;
 

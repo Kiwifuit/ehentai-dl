@@ -34,4 +34,18 @@ impl Progress {
         info!("Made new progress bar with prefix {:?}", prefix);
         new_prog
     }
+
+    pub fn add_custom_prog<P>(&self, total: u64, prefix: P, style: ProgressStyle) -> ProgressBar
+    where
+        P: Into<Cow<'static, str>> + Debug + Clone,
+    {
+        let new_prog = self.master.add(ProgressBar::new(total));
+        new_prog.set_style(style);
+        new_prog.tick();
+
+        new_prog.set_prefix(prefix.clone());
+
+        info!("Made new custom progress bar with prefix {:?}", prefix);
+        new_prog
+    }
 }

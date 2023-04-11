@@ -1,4 +1,12 @@
-use std::fs::{create_dir, OpenOptions};
+cfg_if::cfg_if! {
+    if #[cfg(feature = "aniyomi")] {
+        use std::fs::{OpenOptions};
+        use crate::aniyomi::create_dir;
+    } else {
+        use std::fs::{create_dir, OpenOptions};
+    }
+}
+
 use std::io::prelude::*;
 use std::path::PathBuf;
 

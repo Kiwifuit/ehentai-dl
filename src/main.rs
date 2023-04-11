@@ -11,6 +11,9 @@ mod logger;
 mod parser;
 mod progress;
 
+// Features
+mod aniyomi;
+
 const CHUNK_SIZE: usize = 1024;
 
 fn main() {

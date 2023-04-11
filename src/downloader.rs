@@ -3,11 +3,14 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 
 use futures_util::StreamExt;
+use indicatif::ProgressStyle;
 use log::debug;
 use reqwest::get;
 
 use crate::gallery::{Gallery, Image};
 use crate::progress::Progress;
+
+const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -17,11 +20,17 @@ pub enum DownloadError {
     WriteError(std::io::Error),
 }
 
-async fn download_image(image: &Image, parent_dir: &PathBuf) -> Result<usize, DownloadError> {
-    let mut resp = get(image.get_url())
+async fn download_image(
+    image: &Image,
+    parent_dir: &PathBuf,
+    m_prog: &Progress,
+) -> Result<usize, DownloadError> {
+    let resp = get(image.get_url())
         .await
-        .map_err(|e| DownloadError::NetworkError(e))?
-        .bytes_stream();
+        .map_err(|e| DownloadError::NetworkError(e))?;
+
+    let content_length = resp.content_length().unwrap();
+    let mut resp = resp.bytes_stream();
 
     let save_path = parent_dir.join(image.get_filename());
     let mut file = OpenOptions::new()
@@ -31,12 +40,21 @@ async fn download_image(image: &Image, parent_dir: &PathBuf) -> Result<usize, Do
         .map_err(|e| DownloadError::FileSystemError(e))?;
     let mut downloaded = 0;
 
+    let download_prog = m_prog.add_custom_prog(
+        content_length,
+        format!("Downloading {}", image.get_filename()),
+        ProgressStyle::with_template(PROGBAR_STYLE)
+            .unwrap()
+            .progress_chars("█▓▒░"),
+    );
+
     while let Some(chunk) = resp.next().await {
         let chunk = chunk.map_err(|e| DownloadError::ChunkError(e))?;
         downloaded += chunk.len();
 
         file.write(&chunk)
             .map_err(|e| DownloadError::WriteError(e))?;
+        download_prog.inc(chunk.len() as u64);
     }
 
     debug!(
@@ -59,8 +77,7 @@ pub fn download_gallery(gallery: &Gallery, m_prog: &Progress) -> Result<Vec<usiz
             .enable_all()
             .build()
             .unwrap()
-            .block_on(download_image(image, &root_dir))?;
-
+            .block_on(download_image(image, &root_dir, &m_prog))?;
         download_sizes.push(downloaded);
         download_prog.inc(1);
     }

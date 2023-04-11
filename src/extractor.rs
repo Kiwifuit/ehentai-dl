@@ -19,7 +19,7 @@ pub enum ExtractionError<'a> {
     DataParseError(crate::parser::ParseError<0>),
 }
 
-pub fn get_html<'a, U>(url: U) -> Result<Html, ExtractionError<'a>>
+fn get_html<'a, U>(url: U) -> Result<Html, ExtractionError<'a>>
 where
     U: IntoUrl + Display + Clone,
 {
@@ -74,10 +74,7 @@ where
     Ok(gallery)
 }
 
-pub fn get_title<'a>(
-    gallery: &mut gallery::Gallery,
-    html: &Html,
-) -> Result<(), ExtractionError<'a>> {
+fn get_title<'a>(gallery: &mut gallery::Gallery, html: &Html) -> Result<(), ExtractionError<'a>> {
     let sel = compile!(selector "h1#gn")?;
 
     if let Some(title) = html.select(&sel).next() {
@@ -105,7 +102,7 @@ fn get_pages<'a>(html: &Html) -> Result<u8, ExtractionError<'a>> {
     Ok(pagination.ceil() as u8)
 }
 
-pub fn get_images<'a>(
+fn get_images<'a>(
     pages: &u8,
     gallery_url: &String,
     gallery: &mut gallery::Gallery,
@@ -137,7 +134,7 @@ pub fn get_images<'a>(
     Ok(())
 }
 
-pub fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
+fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
     let html = get_html(image.get_url())?;
     let filename = compile! { selector "div#i2 div" }?;
     let image_url = compile! { selector "div#i3 a img" }?;
@@ -166,10 +163,7 @@ pub fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionEr
     Ok(())
 }
 
-pub fn get_tags<'a>(
-    gallery: &mut gallery::Gallery,
-    html: &Html,
-) -> Result<(), ExtractionError<'a>> {
+fn get_tags<'a>(gallery: &mut gallery::Gallery, html: &Html) -> Result<(), ExtractionError<'a>> {
     let tag_types = compile! { selector "div#taglist table tbody tr" }?;
     let tag_name = compile! { selector "tr td" }?;
     let tag_value = compile! { selector "tr td div a" }?;

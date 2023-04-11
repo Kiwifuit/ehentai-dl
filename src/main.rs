@@ -32,6 +32,14 @@ fn main() {
                 process::exit(1)
             })
             .unwrap();
+        info!("downloading gallery {:?}", gallery.title());
+
+        let download_averages = downloader::download_gallery(&gallery, &m_prog)
+            .map_err(|e| {
+                eprintln!("Error while downloading gallery:\n{:#?}", e);
+                process::exit(1)
+            })
+            .unwrap();
 
         gallery_prog.inc(1);
     }

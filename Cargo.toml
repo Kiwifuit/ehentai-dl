@@ -8,13 +8,14 @@ edition = "2021"
 [dependencies]
 chrono = {version = "0.4.23", default-features = false, features=["std", "clock"]}
 fern_colored = "0.6.1"
+futures-util = "0.3.28"
 indicatif = "0.17.3"
 log = "0.4.17"
 regex = "1.7.1"
-# reqwest has a "stream" feature
-reqwest = {version = "0.11.14", features = ["blocking"]}
+reqwest = {version = "0.11.14", features = ["blocking", "stream"]}
 scraper = "0.16.0"
 tempfile = "3.3.0"
+tokio = { version = "1.27.0", features = ["full"] }
 
 [profile.release]
 lto = true

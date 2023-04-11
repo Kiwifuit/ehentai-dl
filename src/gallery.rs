@@ -1,4 +1,8 @@
+use std::slice::Iter;
+
 use scraper::ElementRef;
+
+type Images<'a> = Iter<'a, Image>;
 
 #[derive(Debug)]
 pub struct Gallery {
@@ -61,6 +65,14 @@ impl Gallery {
 
     pub fn title(&self) -> &String {
         &self.title
+    }
+
+    pub const fn len(&self) -> u8 {
+        self.image_count
+    }
+
+    pub fn images(&self) -> Images<'_> {
+        self.images.iter()
     }
 }
 

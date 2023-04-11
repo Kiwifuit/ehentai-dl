@@ -4,6 +4,7 @@ use log::info;
 
 #[macro_use]
 mod macros;
+mod downloader;
 mod extractor;
 mod gallery;
 mod logger;

@@ -28,7 +28,7 @@ zip = ["dep:zip"]
 [profile.release]
 lto = true
 strip = true
-opt-level = "s"
+opt-level = "z"
 debug = false
 panic = "abort"
 codegen-units = 1

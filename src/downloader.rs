@@ -1,7 +1,7 @@
 cfg_if::cfg_if! {
     if #[cfg(feature = "aniyomi")] {
         use std::fs::{OpenOptions};
-        use crate::aniyomi::create_dir;
+        use crate::aniyomi::*;
     } else {
         use std::fs::{create_dir, OpenOptions};
     }
@@ -19,6 +19,7 @@ use crate::gallery::{Gallery, Image};
 use crate::progress::Progress;
 
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";
+type DownloadedImage = (usize, PathBuf);
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -32,7 +33,7 @@ async fn download_image(
     image: &Image,
     parent_dir: &PathBuf,
     m_prog: &Progress,
-) -> Result<usize, DownloadError> {
+) -> Result<DownloadedImage, DownloadError> {
     let resp = get(image.get_url())
         .await
         .map_err(|e| DownloadError::NetworkError(e))?;
@@ -70,24 +71,54 @@ async fn download_image(
         downloaded,
         save_path.file_name().unwrap().to_str().unwrap()
     );
-    Ok(downloaded)
+    Ok((downloaded, save_path))
 }
 
 pub fn download_gallery(gallery: &Gallery, m_prog: &Progress) -> Result<Vec<usize>, DownloadError> {
     let this_dir = PathBuf::from(".");
-    let root_dir = this_dir.join(gallery.title());
-    let download_prog = m_prog.add_prog(gallery.len() as u64, "Downloading images");
+    let root_dir = if cfg!(feature = "aniyomi") {
+        let dir = this_dir.join(gallery.title());
+        create_dir(&dir).expect("Initial Directory is supposed to be created without problems");
+
+        dir.join("OneShot")
+    } else {
+        this_dir.join(gallery.title())
+    };
+
+    let total = if cfg!(feature = "aniyomi") {
+        gallery.len() as u64 + 1
+    } else {
+        gallery.len() as u64
+    };
+    let download_prog = m_prog.add_prog(total, "Downloading images");
     let mut download_sizes = vec![];
+    let mut downloaded_files = vec![];
 
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
+
     for image in gallery.images() {
         let downloaded = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap()
             .block_on(download_image(image, &root_dir, &m_prog))?;
-        download_sizes.push(downloaded);
+        download_sizes.push(downloaded.0);
+        downloaded_files.push(downloaded.1);
         download_prog.inc(1);
+    }
+
+    if cfg!(feature = "aniyomi") {
+        download_prog.set_message("Finishing Touches");
+        let meta = AniyomiMeta::from(gallery);
+
+        let mut file = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&root_dir.with_file_name("details.json"))
+            .map_err(|e| DownloadError::FileSystemError(e))?;
+
+        to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
+        make_cover(downloaded_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
     }
 
     Ok(download_sizes)

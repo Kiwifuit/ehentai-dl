@@ -5,7 +5,7 @@ A program to download your galleries 🦀
 
 ## TODO
 - [x] Image downloader
-- [ ] JSON Metadata for Ani/Tachiyomi
+- [x] JSON Metadata for Ani/Tachiyomi
   - `cargo build --release --features aniyomi`
 - [ ] Zip Archiver
   - `cargo build --release --features zip`

@@ -9,7 +9,7 @@ pub struct Gallery {
     title: String,
     image_count: u8,
     images: Vec<Image>,
-    tags: Vec<Tag>,
+    tags: Tags,
 }
 
 #[derive(Debug)]
@@ -18,12 +18,18 @@ pub struct Image {
     file: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tag {
     t_type: TagType,
     t_val: String,
 }
-#[derive(Debug)]
+
+#[derive(Debug, Clone)]
+pub struct Tags {
+    _inner: Vec<Tag>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum TagType {
     ReClass,
     Parody,
@@ -41,7 +47,7 @@ impl Gallery {
             title: String::new(),
             image_count: 0,
             images: vec![],
-            tags: vec![],
+            tags: Tags::new(),
         }
     }
 
@@ -73,6 +79,10 @@ impl Gallery {
 
     pub fn images(&self) -> Images<'_> {
         self.images.iter()
+    }
+
+    pub fn tags(&self) -> Tags {
+        self.tags.clone()
     }
 }
 
@@ -120,5 +130,66 @@ impl From<String> for TagType {
             "female" => Self::Female,
             "other" | _ => Self::Other,
         }
+    }
+}
+
+impl ToString for TagType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::ReClass => String::from("reclass"),
+            Self::Parody => String::from("parody"),
+            Self::Character => String::from("character"),
+            Self::Language => String::from("language"),
+            Self::Artist => String::from("artist"),
+            Self::Male => String::from("male"),
+            Self::Female => String::from("female"),
+            Self::Other => String::from("other"),
+        }
+    }
+}
+
+impl Tag {
+    pub fn tag_value(&self) -> &String {
+        &self.t_val
+    }
+
+    pub fn tag_type(&self) -> &TagType {
+        &self.t_type
+    }
+}
+
+impl Tags {
+    fn new() -> Self {
+        Self { _inner: vec![] }
+    }
+
+    pub fn inner(&self) -> &Vec<Tag> {
+        &self._inner
+    }
+
+    fn push(&mut self, tag: Tag) {
+        self._inner.push(tag);
+    }
+
+    pub fn get<P>(&self, predicate: P) -> Option<Tag>
+    where
+        P: Fn(&Tag) -> bool,
+    {
+        for tag in &self._inner {
+            if predicate(tag) {
+                return Some(tag.clone());
+            }
+        }
+
+        None
+    }
+}
+
+impl IntoIterator for Tags {
+    type IntoIter = std::vec::IntoIter<Tag>;
+    type Item = Tag;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self._inner.into_iter()
     }
 }

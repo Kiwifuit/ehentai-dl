@@ -1,6 +1,6 @@
 [package]
 name = "ehentai-dl"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,7 +21,7 @@ tokio = { version = "1.27.0", features = ["full"] }
 zip = { version = "0.6.4", optional = true, default-features= false, features = ["bzip2"]}
 
 [features]
-default = ["aniyomi", "zip"]
+default = ["zip"]
 aniyomi = ["dep:json_minimal"]
 zip = ["dep:zip"]
 

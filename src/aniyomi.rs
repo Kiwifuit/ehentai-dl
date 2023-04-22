@@ -1,12 +1,16 @@
-use std::{
-    fs,
-    io::{self, Write},
-    path::Path,
-};
+#[allow(unused_imports)]
+use std::fs;
+#[allow(unused_imports)]
+use std::io::{Error, Write};
+#[allow(unused_imports)]
+use std::path::Path;
 
+#[cfg(feature = "aniyomi")]
 use json_minimal::Json;
+#[allow(unused_imports)]
 use log::info;
 
+#[allow(unused_imports)]
 use crate::gallery::{Gallery, Tag, TagType};
 
 /// Overrides `std::fs::create_dir` when the `aniyomi` flag
@@ -14,7 +18,8 @@ use crate::gallery::{Gallery, Tag, TagType};
 ///
 /// The override adds a `.nomedia` file inside `path` after
 /// its creation.
-pub fn create_dir<P: AsRef<Path>>(path: P) -> Result<(), std::io::Error> {
+#[cfg(feature = "aniyomi")]
+pub fn create_dir<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     std::fs::create_dir(&path)?;
     std::fs::File::create(path.as_ref().join(".nomedia"))?;
 
@@ -28,6 +33,7 @@ pub struct AniyomiMeta {
     tags: Vec<Tag>,
 }
 
+#[cfg(feature = "aniyomi")]
 impl AniyomiMeta {
     pub fn new(title: String, artist: String, tags: Vec<Tag>) -> Self {
         Self {
@@ -38,6 +44,7 @@ impl AniyomiMeta {
     }
 }
 
+#[cfg(feature = "aniyomi")]
 impl From<&Gallery> for AniyomiMeta {
     fn from(value: &Gallery) -> Self {
         Self::new(
@@ -53,7 +60,8 @@ impl From<&Gallery> for AniyomiMeta {
     }
 }
 
-pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, io::Error> {
+#[cfg(feature = "aniyomi")]
+pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, Error> {
     let tags = meta
         .tags
         .iter()
@@ -87,6 +95,7 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, i
     Ok(written)
 }
 
+#[cfg(feature = "aniyomi")]
 fn make_object<S: ToString>(name: S, value: Json) -> Json {
     Json::OBJECT {
         name: name.to_string(),
@@ -94,7 +103,8 @@ fn make_object<S: ToString>(name: S, value: Json) -> Json {
     }
 }
 
-pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<u64, io::Error> {
+#[cfg(feature = "aniyomi")]
+pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     let path = path.as_ref();
     let ext = path.extension().unwrap().to_str().unwrap();
     let cover = path

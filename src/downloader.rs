@@ -107,18 +107,26 @@ pub fn download_gallery(gallery: &Gallery, m_prog: &Progress) -> Result<Vec<usiz
         download_prog.inc(1);
     }
 
-    if cfg!(feature = "aniyomi") {
-        download_prog.set_message("Finishing Touches");
-        let meta = AniyomiMeta::from(gallery);
+    // cfg! only evaluates to true or false,
+    // we're not actually including or excluding
+    // code when we use the cfg! macro.
+    //
+    // "cfg!, unlike #[cfg], does not remove any
+    // code and only evaluates to true or false"
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "aniyomi")] {
+            download_prog.set_message("Finishing Touches");
+            let meta = AniyomiMeta::from(gallery);
 
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&root_dir.with_file_name("details.json"))
-            .map_err(|e| DownloadError::FileSystemError(e))?;
+            let mut file = OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(&root_dir.with_file_name("details.json"))
+                .map_err(|e| DownloadError::FileSystemError(e))?;
 
-        to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
-        make_cover(downloaded_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
+            to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
+            make_cover(downloaded_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
+        }
     }
 
     Ok(download_sizes)

@@ -97,11 +97,13 @@ fn make_object<S: ToString>(name: S, value: Json) -> Json {
 pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<u64, io::Error> {
     let path = path.as_ref();
     let ext = path.extension().unwrap().to_str().unwrap();
+    let cover = path
+        .parent()
+        .unwrap()
+        .with_file_name(format!("cover.{}", ext));
 
-    fs::copy(
-        path,
-        path.parent()
-            .unwrap()
-            .with_file_name(format!("cover.{}", ext)),
-    )
+    let written = fs::copy(path, &cover)?;
+
+    info!("Written {:?} ({} bytes written)", cover, written);
+    Ok(written)
 }

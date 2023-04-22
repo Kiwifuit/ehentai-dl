@@ -4,15 +4,26 @@ use log::info;
 
 #[macro_use]
 mod macros;
+
+cfg_if::cfg_if! {
+    if #[cfg(not(feature = "aniyomi"))] {
+        #[allow(unused_imports)]
+        mod aniyomi;
+
+        #[allow(dead_code)]
+        mod gallery;
+    }
+    else {
+        mod aniyomi;
+        mod gallery;
+    }
+}
+
 mod downloader;
 mod extractor;
-mod gallery;
 mod logger;
 mod parser;
 mod progress;
-
-// Features
-mod aniyomi;
 
 const CHUNK_SIZE: usize = 1024;
 

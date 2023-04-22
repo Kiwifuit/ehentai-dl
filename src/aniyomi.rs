@@ -1,16 +1,12 @@
-#[allow(unused_imports)]
 use std::fs;
-#[allow(unused_imports)]
 use std::io::{Error, Write};
-#[allow(unused_imports)]
 use std::path::Path;
 
 #[cfg(feature = "aniyomi")]
 use json_minimal::Json;
-#[allow(unused_imports)]
+
 use log::info;
 
-#[allow(unused_imports)]
 use crate::gallery::{Gallery, Tag, TagType};
 
 /// Overrides `std::fs::create_dir` when the `aniyomi` flag

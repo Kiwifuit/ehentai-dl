@@ -59,7 +59,7 @@ fn main() {
             .unwrap();
         info!("downloading gallery {:?}", gallery.title());
 
-        let download_averages = downloader::download_gallery(&gallery, &m_prog)
+        let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog)
             .map_err(|e| {
                 eprintln!("Error while downloading gallery:\n{:#?}", e);
                 process::exit(1)

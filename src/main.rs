@@ -12,14 +12,25 @@ cfg_if::cfg_if! {
 
         #[allow(dead_code)]
         mod gallery;
-    }
-    else {
+    } else {
         mod aniyomi;
         mod gallery;
     }
 }
 
-mod downloader;
+cfg_if::cfg_if! {
+    if #[cfg(not(feature = "zip"))] {
+        #[allow(unused_imports)]
+        mod zip;
+
+        #[allow(dead_code)]
+        mod downloader;
+    } else {
+        mod zip;
+        mod downloader;
+    }
+}
+
 mod extractor;
 mod logger;
 mod parser;

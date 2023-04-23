@@ -17,6 +17,8 @@ use reqwest::get;
 
 use crate::gallery::{Gallery, Image};
 use crate::progress::Progress;
+
+#[cfg(feature = "zip")]
 use crate::zip;
 
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";

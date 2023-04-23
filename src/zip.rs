@@ -3,9 +3,14 @@ use std::io::{self, prelude::*};
 use std::path::Path;
 
 use indicatif::ProgressBar;
+
+#[cfg(feature = "zip")]
 use zip::{write::*, CompressionMethod};
 
+#[cfg(feature = "zip")]
 const COMPRESSION: CompressionMethod = CompressionMethod::DEFLATE;
+
+#[cfg(feature = "zip")]
 type ZipFile = ZipWriter<File>;
 
 #[derive(Debug)]

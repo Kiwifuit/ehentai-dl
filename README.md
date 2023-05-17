@@ -15,7 +15,7 @@ A program to download your galleries 🦀
   - Verbosity with `-v` controls the verbosity of the log files
   - Point to a config file with `-c`
   - Show version with `--version`
-    - [ ] Versioning scheme
+    - [x] Versioning scheme
      ```
       e-hentai_dl v3.0.2 w/aniyomi,zip,config
       |^^^^^^^^^| |^^^^|  |^^^^^^^^^^^^^^^^^|

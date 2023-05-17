@@ -40,8 +40,11 @@ mod version;
 const CHUNK_SIZE: usize = 1024;
 
 fn main() {
+    let version = version::get_version();
     logger::setup_logger(logger::LogLevel::Debug)
         .expect("unexpected error whie starting the logger");
+    info!("{}", version);
+
     let m_prog = progress::Progress::new();
 
     let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();

@@ -14,7 +14,7 @@ const COMPRESSION: CompressionMethod = CompressionMethod::DEFLATE;
 type ZipFile = ZipWriter<File>;
 
 #[derive(Debug)]
-#[cfg(all(feature = "zip", not(feature = "aniyomi")))]
+#[cfg(feature = "zip")]
 pub enum ZipError {
     ZipOpenError(io::Error),
     AddDirError(zip::result::ZipError),
@@ -24,7 +24,7 @@ pub enum ZipError {
     GetFileLengthError(io::Error),
 }
 
-#[cfg(all(feature = "zip", not(feature = "aniyomi")))]
+#[cfg(feature = "zip")]
 pub fn make_zip<P: AsRef<Path>>(file: &P) -> Result<ZipFile, ZipError> {
     let file = OpenOptions::new()
         .create_new(true)
@@ -35,7 +35,7 @@ pub fn make_zip<P: AsRef<Path>>(file: &P) -> Result<ZipFile, ZipError> {
     Ok(ZipWriter::new(file))
 }
 
-#[cfg(all(feature = "zip", not(feature = "aniyomi")))]
+#[cfg(feature = "zip")]
 pub fn add_file<P, const CHUNK_SIZE: usize>(
     arch: &mut ZipFile,
     path: &P,
@@ -68,21 +68,15 @@ where
         arch.start_file(path.as_os_str().to_str().unwrap(), opts)
             .map_err(|e| ZipError::StartFileError(e))?;
 
-        let mut written = 0;
-        while let Ok(_) = file.read(&mut buf) {
-            let written_now = arch.write(&buf).map_err(|e| ZipError::WriteError(e))?;
-            prog.inc(written_now as u64);
+        while let Ok(read) = file.read(&mut buf) {
 
-            written += written_now;
-            // Clear the buffer
-            buf.fill(0);
         }
 
-        Ok(written)
+        Ok(0)
     }
 }
 
-#[cfg(all(feature = "zip", not(feature = "aniyomi")))]
+#[cfg(feature = "zip")]
 fn get_length<F: Seek>(file: &mut F) -> Result<u64, ZipError> {
     let len = file
         .seek(io::SeekFrom::End(0))

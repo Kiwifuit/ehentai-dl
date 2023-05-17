@@ -1,6 +1,6 @@
 use std::process;
 
-use log::info;
+use log::{error, info};
 
 #[macro_use]
 mod macros;
@@ -53,7 +53,8 @@ fn main() {
 
         let gallery = extractor::get_gallery(&gallery, &m_prog)
             .map_err(|e| {
-                eprintln!("Error while extracting gallery:\n{:#?}", e);
+                eprintln!("Error while extracting gallery:\n{:#?}\n\nPlease check the logs for further information", e);
+                error!("Error while extracting gallery:\n{:#?}", e);
                 process::exit(1)
             })
             .unwrap();
@@ -61,7 +62,8 @@ fn main() {
 
         let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog)
             .map_err(|e| {
-                eprintln!("Error while downloading gallery:\n{:#?}", e);
+                eprintln!("Error while downloading gallery:\n{:#?}\n\nPlease check the logs for further information", e);
+                error!("Error while downloading gallery:\n{:#?}", e);
                 process::exit(1)
             })
             .unwrap();

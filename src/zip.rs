@@ -2,14 +2,13 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 use std::path::Path;
 
-use indicatif::ProgressBar;
 use log::{debug, trace};
 
 #[cfg(feature = "zip")]
 use zip::{write::*, CompressionMethod};
 
 #[cfg(feature = "zip")]
-const COMPRESSION: CompressionMethod = CompressionMethod::DEFLATE;
+const COMPRESSION: CompressionMethod = CompressionMethod::BZIP2;
 
 #[cfg(feature = "zip")]
 type ZipFile = ZipWriter<File>;
@@ -21,8 +20,10 @@ pub enum ZipError {
     AddDirError(zip::result::ZipError),
     ReadError(io::Error),
     WriteError(io::Error),
-    StartFileError(zip::result::ZipError),
-    GetFileLengthError(io::Error),
+    StartFileError {
+        error: zip::result::ZipError,
+        compression: CompressionMethod,
+    },
 }
 
 #[cfg(feature = "zip")]
@@ -37,11 +38,7 @@ pub fn make_zip<P: AsRef<Path>>(file: &P) -> Result<ZipFile, ZipError> {
 }
 
 #[cfg(feature = "zip")]
-pub fn add_file<P, const CHUNK_SIZE: usize>(
-    arch: &mut ZipFile,
-    path: &P,
-    prog: &ProgressBar,
-) -> Result<usize, ZipError>
+pub fn add_file<P, const CHUNK_SIZE: usize>(arch: &mut ZipFile, path: &P) -> Result<usize, ZipError>
 where
     P: AsRef<Path>,
 {
@@ -52,10 +49,8 @@ where
         .compression_level(Some(9));
 
     if path.is_dir() {
-        prog.set_length(1);
         arch.add_directory(path.as_os_str().to_str().unwrap(), opts)
             .map_err(|e| ZipError::AddDirError(e))?;
-        prog.inc(1);
 
         Ok(0)
     } else {
@@ -64,16 +59,35 @@ where
             .open(path)
             .map_err(|e| ZipError::ReadError(e))?;
 
-        prog.set_length(get_length(&mut file)?);
-
         let mut buf = [0; CHUNK_SIZE];
         arch.start_file(path.as_os_str().to_str().unwrap(), opts)
-            .map_err(|e| ZipError::StartFileError(e))?;
+            .map_err(|e| ZipError::StartFileError {
+                error: e,
+                compression: COMPRESSION,
+            })?;
 
         let mut written_bytes = 0;
         while let Ok(read) = file.read(&mut buf) {
-            written_bytes += arch.write(&buf).map_err(|e| ZipError::WriteError(e))?;
-            debug!("Read/Written: {}/{}", read, written_bytes);
+            // We have to manually check if we finished writing
+            // because EOF only returns Ok(0)
+            if read == 0 {
+                break;
+            }
+
+            let written = arch
+                .write(
+                    &buf.iter()
+                        .take(read)
+                        .map(|e| e.to_owned())
+                        .collect::<Vec<u8>>(),
+                )
+                .map_err(|e| ZipError::WriteError(e))?;
+
+            written_bytes += written;
+            debug!(
+                "Read/Write Delta: {}/{} (Written Total: {})",
+                read, written, written_bytes
+            );
 
             trace!("Clearing buffer");
             trace!(
@@ -87,17 +101,10 @@ where
             trace!("Buffer cleared");
         }
 
+        debug!(
+            "Written {:?} to archive",
+            path.as_os_str().to_str().unwrap()
+        );
         Ok(written_bytes)
     }
-}
-
-#[cfg(feature = "zip")]
-fn get_length<F: Seek>(file: &mut F) -> Result<u64, ZipError> {
-    let len = file
-        .seek(io::SeekFrom::End(0))
-        .map_err(|e| ZipError::GetFileLengthError(e))?;
-
-    file.seek(io::SeekFrom::Start(0))
-        .map_err(|e| ZipError::GetFileLengthError(e))?;
-    Ok(len)
 }

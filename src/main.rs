@@ -35,6 +35,7 @@ mod extractor;
 mod logger;
 mod parser;
 mod progress;
+mod version;
 
 const CHUNK_SIZE: usize = 1024;
 

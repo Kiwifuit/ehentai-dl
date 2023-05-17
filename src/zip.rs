@@ -54,13 +54,15 @@ where
 
         Ok(0)
     } else {
+        let path = path.to_str().unwrap().strip_prefix("./").unwrap();
+
         let mut file = OpenOptions::new()
             .read(true)
             .open(path)
             .map_err(|e| ZipError::ReadError(e))?;
 
         let mut buf = [0; CHUNK_SIZE];
-        arch.start_file(path.as_os_str().to_str().unwrap(), opts)
+        arch.start_file(path, opts)
             .map_err(|e| ZipError::StartFileError {
                 error: e,
                 compression: COMPRESSION,
@@ -101,10 +103,7 @@ where
             trace!("Buffer cleared");
         }
 
-        debug!(
-            "Written {:?} to archive",
-            path.as_os_str().to_str().unwrap()
-        );
+        debug!("Written {:?} to archive", path);
         Ok(written_bytes)
     }
 }

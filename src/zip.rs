@@ -3,6 +3,7 @@ use std::io::{self, prelude::*};
 use std::path::Path;
 
 use indicatif::ProgressBar;
+use log::{debug, trace};
 
 #[cfg(feature = "zip")]
 use zip::{write::*, CompressionMethod};
@@ -44,6 +45,7 @@ pub fn add_file<P, const CHUNK_SIZE: usize>(
 where
     P: AsRef<Path>,
 {
+    trace!("Chunk size provided is {}", CHUNK_SIZE);
     let path = path.as_ref();
     let opts = FileOptions::default()
         .compression_method(COMPRESSION)
@@ -68,11 +70,24 @@ where
         arch.start_file(path.as_os_str().to_str().unwrap(), opts)
             .map_err(|e| ZipError::StartFileError(e))?;
 
+        let mut written_bytes = 0;
         while let Ok(read) = file.read(&mut buf) {
+            written_bytes += arch.write(&buf).map_err(|e| ZipError::WriteError(e))?;
+            debug!("Read/Written: {}/{}", read, written_bytes);
 
+            trace!("Clearing buffer");
+            trace!(
+                "Buffer dump: {}",
+                buf.iter()
+                    .map(|i| i.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            );
+            buf.fill(0);
+            trace!("Buffer cleared");
         }
 
-        Ok(0)
+        Ok(written_bytes)
     }
 }
 

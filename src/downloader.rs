@@ -146,7 +146,10 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
             for file in downloaded_files {
                 let z_prog = m_prog.add_prog(1, format!("Zipping {}", gallery.title()));
 
-                let written = zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &root_dir, &z_prog).map_err(|e| DownloadError::ZipError(e))?;
+                // why. just why
+                // what was i trying to achieve by
+                // passing in `&root_dir` in the previous commits
+                let written = zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &file, &z_prog).map_err(|e| DownloadError::ZipError(e))?;
 
                 info!("Written file {:?} to disc ({} bytes written)", file.to_str().unwrap(), written);
                 z_prog.finish_and_clear();

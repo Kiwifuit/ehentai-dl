@@ -1,5 +1,6 @@
 use log::debug;
 use std::ffi::OsStr;
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{self, prelude::*};
 use std::path::Path;
@@ -21,6 +22,23 @@ pub enum ParseError<const C: usize> {
     StringEncodeError(string::FromUtf8Error),
     NoCapture,
     IntParseError(num::ParseFloatError),
+}
+
+impl<const C: usize> Display for ParseError<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::IoError(e) => format!("i/o error: {}", e),
+                Self::ChannelError(e) => format!("channel error: {}", e),
+                Self::RegexParseError(e) => format!("regex error: {}", e),
+                Self::StringEncodeError(e) => format!("error while decoding string: {}", e),
+                Self::NoCapture => format!("expected to parse something, got nothing"),
+                Self::IntParseError(e) => format!("error while parsing int: {}", e),
+            }
+        )
+    }
 }
 
 /// Loads a file chunk by chunk and sends it via `tx`, along with how many

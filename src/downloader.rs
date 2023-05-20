@@ -7,6 +7,7 @@ cfg_if::cfg_if! {
     }
 }
 
+use std::fmt::Display;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
@@ -33,6 +34,24 @@ pub enum DownloadError {
 
     #[cfg(feature = "zip")]
     ZipError(zip::ZipError),
+}
+
+impl Display for DownloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "error while {}",
+            match self {
+                Self::NetworkError(e) => format!("performing request: {}", e),
+                Self::FileSystemError(e) => format!("reading/writing to the filesystem: {}", e),
+                Self::ChunkError(e) => format!("awaiting next chunk: {}", e),
+                Self::WriteError(e) => format!("writing to file: {}", e),
+
+                #[cfg(feature = "zip")]
+                Self::ZipError(e) => format!("zipping content: {}", e),
+            }
+        )
+    }
 }
 
 async fn download_image(

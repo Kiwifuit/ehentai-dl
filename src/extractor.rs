@@ -19,6 +19,23 @@ pub enum ExtractionError<'a> {
     DataParseError(crate::parser::ParseError<0>),
 }
 
+impl<'a> Display for ExtractionError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "error while {}",
+            match self {
+                Self::NetworkError(e) => format!("performing request: {}", e),
+                Self::BytesDecodeError(e) => format!("decoding bytes: {}", e),
+                Self::StringDecodeError(e) => format!("decoding string: {}", e),
+                Self::SelectorParseError(e) => format!("parsing selector: {}", e),
+                Self::EmptyData(e) => format!("expecting data: expected {}, got none", e),
+                Self::DataParseError(e) => format!("parsing: {}", e),
+            }
+        )
+    }
+}
+
 fn get_html<'a, U>(url: U) -> Result<Html, ExtractionError<'a>>
 where
     U: IntoUrl + Display + Clone,

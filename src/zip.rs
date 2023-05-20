@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 use std::path::{Path, PathBuf};
@@ -24,6 +25,26 @@ pub enum ZipError {
         error: zip::result::ZipError,
         compression: CompressionMethod,
     },
+}
+
+#[cfg(feature = "zip")]
+impl Display for ZipError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "error while {}",
+            match self {
+                Self::ZipOpenError(e) => format!("opening zip file: {}", e),
+                Self::AddDirError(e) => format!("adding directory: {}", e),
+                Self::ReadError(e) => format!("reading file: {}", e),
+                Self::WriteError(e) => format!("writing file: {}", e),
+                Self::StartFileError {
+                    error: e,
+                    compression: _,
+                } => format!("compressing file: {}", e),
+            }
+        )
+    }
 }
 
 #[cfg(feature = "zip")]

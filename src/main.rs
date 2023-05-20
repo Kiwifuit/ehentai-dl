@@ -1,4 +1,4 @@
-use std::process;
+use std::{process, sync::mpsc};
 
 use log::{error, info};
 
@@ -56,19 +56,17 @@ fn main() {
         info!("fetching data for {:?}", gallery);
 
         let gallery = extractor::get_gallery(&gallery, &m_prog)
-            .map_err(|e| {
-                eprintln!("Error while extracting gallery:\n{:#?}\n\nPlease check the logs for further information", e);
+            .map_err(move |e| {
+                eprintln!("Error while extracting gallery: {:}\n\nPlease check the logs for further information", e);
                 error!("Error while extracting gallery:\n{:#?}", e);
-                process::exit(1)
             })
             .unwrap();
         info!("downloading gallery {:?}", gallery.title());
 
         let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog)
             .map_err(|e| {
-                eprintln!("Error while downloading gallery:\n{:#?}\n\nPlease check the logs for further information", e);
+                eprintln!("Error while downloading gallery: {:}\n\nPlease check the logs for further information", e);
                 error!("Error while downloading gallery:\n{:#?}", e);
-                process::exit(1)
             })
             .unwrap();
 

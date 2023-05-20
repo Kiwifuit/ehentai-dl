@@ -1,5 +1,3 @@
-use std::{process, sync::mpsc};
-
 use log::{error, info};
 
 #[macro_use]
@@ -57,7 +55,7 @@ fn main() {
 
         let gallery = extractor::get_gallery(&gallery, &m_prog)
             .map_err(move |e| {
-                eprintln!("Error while extracting gallery: {:}\n\nPlease check the logs for further information", e);
+                // eprintln!("Error while extracting gallery: {:}\n\nPlease check the logs for further information", e);
                 error!("Error while extracting gallery:\n{:#?}", e);
             })
             .unwrap();
@@ -65,7 +63,7 @@ fn main() {
 
         let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog)
             .map_err(|e| {
-                eprintln!("Error while downloading gallery: {:}\n\nPlease check the logs for further information", e);
+                // eprintln!("Error while downloading gallery: {:}\n\nPlease check the logs for further information", e);
                 error!("Error while downloading gallery:\n{:#?}", e);
             })
             .unwrap();

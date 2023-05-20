@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use log::{error, info};
 
 #[macro_use]
@@ -39,6 +41,7 @@ const CHUNK_SIZE: usize = 1024;
 
 fn main() {
     let version = version::get_version();
+    let mut errs = 0;
     logger::setup_logger(logger::LogLevel::Debug)
         .expect("unexpected error whie starting the logger");
     info!("{}", version);
@@ -52,23 +55,44 @@ fn main() {
     info!("{} galleries to download", galleries.len());
     for gallery in galleries {
         info!("fetching data for {:?}", gallery);
+        let gallery = extractor::get_gallery(&gallery, &m_prog);
 
-        let gallery = extractor::get_gallery(&gallery, &m_prog)
-            .map_err(move |e| {
-                // eprintln!("Error while extracting gallery: {:}\n\nPlease check the logs for further information", e);
-                error!("Error while extracting gallery:\n{:#?}", e);
-            })
-            .unwrap();
+        if let Err(ref err) = gallery {
+            error!(
+                "Error while extracting data for gallery: {0}\nFull Error:\n{0:#?}",
+                err
+            );
+            errs += 1;
+
+            continue;
+        }
+        let gallery = gallery.unwrap();
+
         info!("downloading gallery {:?}", gallery.title());
 
-        let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog)
-            .map_err(|e| {
-                // eprintln!("Error while downloading gallery: {:}\n\nPlease check the logs for further information", e);
-                error!("Error while downloading gallery:\n{:#?}", e);
-            })
-            .unwrap();
+        let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog);
+
+        if let Err(ref err) = download_averages {
+            error!(
+                "Error while downloading gallery {1:?}: {0}\nFull Error:\n{0:#?}",
+                err,
+                gallery.title()
+            );
+            errs += 1;
+
+            continue;
+        }
+        let download_averages = download_averages.unwrap();
 
         gallery_prog.inc(1);
     }
     gallery_prog.finish();
+
+    if errs < 0 {
+        eprintln!(
+            "{} error(s) have occurred while downloading, check the logs for more info",
+            errs
+        );
+        exit(errs);
+    }
 }

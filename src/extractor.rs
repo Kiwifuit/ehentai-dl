@@ -158,7 +158,7 @@ fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<
     let url = html
         .select(&image_url)
         .nth(0)
-        .unwrap()
+        .ok_or(ExtractionError::EmptyData("selector div #i3 a img"))?
         .value()
         .attr("src")
         .unwrap()

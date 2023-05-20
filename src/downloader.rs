@@ -112,7 +112,20 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
             .unwrap()
             .block_on(download_image(image, &root_dir, &m_prog))?;
         download_sizes.push(downloaded.0);
-        downloaded_files.push(downloaded.1);
+        downloaded_files.push(
+            downloaded
+                .1
+                .components()
+                .filter_map(|c| {
+                    debug!("Component: {}", c.as_os_str().to_string_lossy());
+                    if c.as_os_str().to_string_lossy() == "." {
+                        None
+                    } else {
+                        Some(c)
+                    }
+                })
+                .collect::<PathBuf>(),
+        );
         download_prog.inc(1);
     }
 

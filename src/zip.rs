@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 use std::path::Path;
 
-use log::{debug, trace};
+use log::{debug, info, trace};
 
 #[cfg(feature = "zip")]
 use zip::{write::*, CompressionMethod};
@@ -43,18 +43,16 @@ where
     P: AsRef<Path>,
 {
     trace!("Chunk size provided is {}", CHUNK_SIZE);
+
     let path = path.as_ref();
     let opts = FileOptions::default()
         .compression_method(COMPRESSION)
         .compression_level(Some(9));
 
-    if path.is_dir() {
-        arch.add_directory(path.as_os_str().to_str().unwrap(), opts)
-            .map_err(|e| ZipError::AddDirError(e))?;
+    info!("Adding file {:?}", path.display());
 
-        Ok(0)
-    } else {
-        let path = path.to_str().unwrap().strip_prefix("./").unwrap();
+    if path.is_file() {
+        let path = path.to_str().unwrap();
 
         let mut file = OpenOptions::new()
             .read(true)
@@ -86,10 +84,7 @@ where
                 .map_err(|e| ZipError::WriteError(e))?;
 
             written_bytes += written;
-            debug!(
-                "Read/Write Delta: {}/{} (Written Total: {})",
-                read, written, written_bytes
-            );
+            trace!("Written Total: {}", written_bytes);
 
             trace!("Clearing buffer");
             trace!(
@@ -104,6 +99,11 @@ where
         }
 
         debug!("Written {:?} to archive", path);
-        Ok(written_bytes)
+        return Ok(written_bytes);
+    } else if !path.starts_with("./") {
+        arch.add_directory(path.as_os_str().to_string_lossy(), opts)
+            .map_err(|e| ZipError::AddDirError(e))?;
     }
+
+    Ok(0)
 }

@@ -8,6 +8,7 @@ use json_minimal::Json;
 use log::info;
 
 use crate::gallery::{Gallery, Tag, TagType};
+use crate::version::get_version;
 
 /// Overrides `std::fs::create_dir` when the `aniyomi` flag
 /// is set.
@@ -71,7 +72,7 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, E
         .add(make_object("artist", Json::STRING(meta.artist.clone())))
         .add(make_object(
             "description",
-            Json::STRING(String::from("Made with ehentai-dl")),
+            Json::STRING(format!("Made with {}", get_version())),
         ))
         .add(make_object("genre", Json::ARRAY(tags)))
         .add(make_object("status", Json::STRING("0".to_string())))

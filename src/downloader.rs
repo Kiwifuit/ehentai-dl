@@ -58,8 +58,7 @@ async fn download_image(
     let download_prog = m_prog.add_custom_prog(
         content_length,
         format!("Downloading {}", image.get_filename()),
-        ProgressStyle::with_template(PROGBAR_STYLE)
-            .unwrap(),
+        ProgressStyle::with_template(PROGBAR_STYLE).unwrap(),
     );
 
     while let Some(chunk) = stream.next().await {
@@ -111,19 +110,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
             .unwrap()
             .block_on(download_image(image, &root_dir, &m_prog))?;
         dl_sizes.push(dl_size);
-        dl_files.push(
-            dl_path
-                .components()
-                .filter_map(|c| {
-                    debug!("Component: {}", c.as_os_str().to_string_lossy());
-                    if c.as_os_str().to_string_lossy() == "." {
-                        None
-                    } else {
-                        Some(c)
-                    }
-                })
-                .collect::<PathBuf>(),
-        );
+        dl_files.push(dl_path);
         download_prog.inc(1);
     }
 
@@ -137,16 +124,24 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         if #[cfg(feature = "aniyomi")] {
             download_prog.set_message("Finishing Touches");
             let meta = AniyomiMeta::from(gallery);
+            let meta_file = root_dir.with_file_name("details.json");
 
             let mut file = OpenOptions::new()
                 .create_new(true)
                 .write(true)
-                .open(&root_dir.with_file_name("details.json"))
+                .open(&meta_file)
                 .map_err(|e| DownloadError::FileSystemError(e))?;
 
             to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
-            make_cover(downloaded_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
-        } else if #[cfg(feature = "zip")] {
+            let cover_file = make_cover(dl_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
+
+            dl_files.push(meta_file);
+            dl_files.push(cover_file);
+        }
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "zip")] {
             let zip_prog = m_prog.add_prog(dl_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
             let mut zip_file = zip::make_zip(&format!("{}.zip", gallery.title())).map_err(|e| DownloadError::ZipError(e))?;
 

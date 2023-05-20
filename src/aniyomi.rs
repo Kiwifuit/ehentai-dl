@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{Error, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[cfg(feature = "aniyomi")]
 use json_minimal::Json;
@@ -100,7 +100,7 @@ fn make_object<S: ToString>(name: S, value: Json) -> Json {
 }
 
 #[cfg(feature = "aniyomi")]
-pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
+pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
     let path = path.as_ref();
     let ext = path.extension().unwrap().to_str().unwrap();
     let cover = path
@@ -111,5 +111,5 @@ pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<u64, Error> {
     let written = fs::copy(path, &cover)?;
 
     info!("Written {:?} ({} bytes written)", cover, written);
-    Ok(written)
+    Ok(cover)
 }

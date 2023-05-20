@@ -1,6 +1,6 @@
 use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use log::{debug, info, trace};
 
@@ -44,7 +44,18 @@ where
 {
     trace!("Chunk size provided is {}", CHUNK_SIZE);
 
-    let path = path.as_ref();
+    let path = path
+        .as_ref()
+        .components()
+        .filter_map(|c| {
+            if c.as_os_str().to_string_lossy() == "." {
+                None
+            } else {
+                Some(c)
+            }
+        })
+        .collect::<PathBuf>();
+
     let compression_opts = FileOptions::default()
         .compression_method(COMPRESSION_MODE)
         .compression_level(Some(9));

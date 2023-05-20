@@ -4,6 +4,7 @@ use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::info;
 
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} ({percent:.cyan}%)";
+const PROGBAR_BAR_STYLE: &str = "█▓▒░";
 
 pub struct Progress {
     master: MultiProgress,
@@ -14,7 +15,7 @@ impl Progress {
     pub fn new() -> Self {
         let style = ProgressStyle::with_template(PROGBAR_STYLE)
             .unwrap()
-            .progress_chars("█▓▒░"); //"█▓▒░"
+            .progress_chars(PROGBAR_BAR_STYLE); //"█▓▒░"
         let master = MultiProgress::new();
 
         info!("Master Progress Bar created");
@@ -40,7 +41,7 @@ impl Progress {
         P: Into<Cow<'static, str>> + Debug + Clone,
     {
         let new_prog = self.master.add(ProgressBar::new(total));
-        new_prog.set_style(style);
+        new_prog.set_style(style.progress_chars(PROGBAR_BAR_STYLE));
         new_prog.tick();
 
         new_prog.set_prefix(prefix.clone());

@@ -58,21 +58,22 @@ where
 
     thread::spawn(move || load_file::<CHUNK_SIZE>(&file, file_tx));
 
-    let mut res = String::new();
+    let mut contents = String::new();
     while let Ok((chunk, bytes_read)) = file_rx.recv() {
         if bytes_read == 0 {
             break;
         }
+
         let bytes = chunk
             .iter()
             .take(bytes_read)
             .map(|i| *i)
             .collect::<Vec<u8>>();
-        debug!("read {}/{} bytes", bytes_read, CHUNK_SIZE);
-        res += &String::from_utf8(bytes).map_err(|e| ParseError::StringEncodeError(e))?;
+        debug!("Read {}/{} bytes", bytes_read, CHUNK_SIZE);
+        contents += &String::from_utf8(bytes).map_err(|e| ParseError::StringEncodeError(e))?;
     }
 
-    Ok(res)
+    Ok(contents)
 }
 
 pub fn get_all_galleries(raw: &String) -> Result<Vec<String>, ParseError<0>> {

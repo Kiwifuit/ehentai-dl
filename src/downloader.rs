@@ -45,7 +45,7 @@ async fn download_image(
         .map_err(|e| DownloadError::NetworkError(e))?;
 
     let content_length = resp.content_length().unwrap();
-    let mut resp = resp.bytes_stream();
+    let mut stream = resp.bytes_stream();
 
     let save_path = parent_dir.join(image.get_filename());
     let mut file = OpenOptions::new()
@@ -59,11 +59,10 @@ async fn download_image(
         content_length,
         format!("Downloading {}", image.get_filename()),
         ProgressStyle::with_template(PROGBAR_STYLE)
-            .unwrap()
-            .progress_chars("█▓▒░"),
+            .unwrap(),
     );
 
-    while let Some(chunk) = resp.next().await {
+    while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| DownloadError::ChunkError(e))?;
         downloaded += chunk.len();
 
@@ -84,14 +83,14 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     gallery: &Gallery,
     m_prog: &Progress,
 ) -> Result<Vec<usize>, DownloadError> {
-    let this_dir = PathBuf::from(".");
+    let cwd = PathBuf::from(".");
     let root_dir = if cfg!(feature = "aniyomi") {
-        let dir = this_dir.join(gallery.title());
-        create_dir(&dir).expect("Initial Directory is supposed to be created without problems");
+        let cwd = cwd.join(gallery.title());
+        create_dir(&cwd).expect("Initial Directory is supposed to be created without problems");
 
-        dir.join("OneShot")
+        cwd.join("OneShot")
     } else {
-        this_dir.join(gallery.title())
+        cwd.join(gallery.title())
     };
 
     let total = if cfg!(feature = "aniyomi") {
@@ -100,21 +99,20 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         gallery.len() as u64
     };
     let download_prog = m_prog.add_prog(total, "Downloading images");
-    let mut download_sizes = vec![];
-    let mut downloaded_files = vec![];
+    let mut dl_sizes = vec![];
+    let mut dl_files = vec![];
 
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
 
     for image in gallery.images() {
-        let downloaded = tokio::runtime::Builder::new_current_thread()
+        let (dl_size, dl_path) = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap()
             .block_on(download_image(image, &root_dir, &m_prog))?;
-        download_sizes.push(downloaded.0);
-        downloaded_files.push(
-            downloaded
-                .1
+        dl_sizes.push(dl_size);
+        dl_files.push(
+            dl_path
                 .components()
                 .filter_map(|c| {
                     debug!("Component: {}", c.as_os_str().to_string_lossy());
@@ -149,14 +147,14 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
             to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
             make_cover(downloaded_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
         } else if #[cfg(feature = "zip")] {
-            let zip_prog = m_prog.add_prog(downloaded_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
+            let zip_prog = m_prog.add_prog(dl_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
             let mut zip_file = zip::make_zip(&format!("{}.zip", gallery.title())).map_err(|e| DownloadError::ZipError(e))?;
 
             let rd_prog = m_prog.add_prog(1, "Root directory");
             zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &root_dir).map_err(|e| DownloadError::ZipError(e))?;
             rd_prog.finish_and_clear();
 
-            for file in downloaded_files {
+            for file in dl_files {
                 // why. just why
                 // what was i trying to achieve by
                 // passing in `&root_dir` in the previous commits
@@ -169,5 +167,5 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         }
     }
 
-    Ok(download_sizes)
+    Ok(dl_sizes)
 }

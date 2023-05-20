@@ -8,7 +8,7 @@ use log::{debug, info, trace};
 use zip::{write::*, CompressionMethod};
 
 #[cfg(feature = "zip")]
-const COMPRESSION: CompressionMethod = CompressionMethod::BZIP2;
+const COMPRESSION_MODE: CompressionMethod = CompressionMethod::BZIP2;
 
 #[cfg(feature = "zip")]
 type ZipFile = ZipWriter<File>;
@@ -45,8 +45,8 @@ where
     trace!("Chunk size provided is {}", CHUNK_SIZE);
 
     let path = path.as_ref();
-    let opts = FileOptions::default()
-        .compression_method(COMPRESSION)
+    let compression_opts = FileOptions::default()
+        .compression_method(COMPRESSION_MODE)
         .compression_level(Some(9));
 
     info!("Adding file {:?}", path.display());
@@ -60,10 +60,10 @@ where
             .map_err(|e| ZipError::ReadError(e))?;
 
         let mut buf = [0; CHUNK_SIZE];
-        arch.start_file(path, opts)
+        arch.start_file(path, compression_opts)
             .map_err(|e| ZipError::StartFileError {
                 error: e,
-                compression: COMPRESSION,
+                compression: COMPRESSION_MODE,
             })?;
 
         let mut written_bytes = 0;
@@ -101,7 +101,7 @@ where
         debug!("Written {:?} to archive", path);
         return Ok(written_bytes);
     } else if !path.starts_with("./") {
-        arch.add_directory(path.as_os_str().to_string_lossy(), opts)
+        arch.add_directory(path.as_os_str().to_string_lossy(), compression_opts)
             .map_err(|e| ZipError::AddDirError(e))?;
     }
 

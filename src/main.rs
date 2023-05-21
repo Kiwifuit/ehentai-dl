@@ -43,7 +43,7 @@ fn main() {
     let version = version::get_version();
     let mut errs = 0;
     logger::setup_logger(logger::LogLevel::Debug)
-        .expect("unexpected error whie starting the logger");
+        .expect("unexpected error while starting the logger");
     info!("{}", version);
 
     let m_prog = progress::Progress::new();

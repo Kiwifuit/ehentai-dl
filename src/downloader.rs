@@ -31,6 +31,7 @@ pub enum DownloadError {
     FileSystemError(std::io::Error),
     ChunkError(reqwest::Error),
     WriteError(std::io::Error),
+    AddDirError(std::io::Error),
 
     #[cfg(feature = "zip")]
     ZipError(zip::ZipError),
@@ -46,6 +47,7 @@ impl Display for DownloadError {
                 Self::FileSystemError(e) => format!("reading/writing to the filesystem: {}", e),
                 Self::ChunkError(e) => format!("awaiting next chunk: {}", e),
                 Self::WriteError(e) => format!("writing to file: {}", e),
+                Self::AddDirError(e) => format!("while creating directory: {}", e),
 
                 #[cfg(feature = "zip")]
                 Self::ZipError(e) => format!("zipping content: {}", e),
@@ -104,7 +106,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     let cwd = PathBuf::from(".");
     let root_dir = if cfg!(feature = "aniyomi") {
         let cwd = cwd.join(gallery.title());
-        create_dir(&cwd).expect("Initial Directory is supposed to be created without problems");
+        create_dir(&cwd).map_err(|e| DownloadError::AddDirError(e))?;
 
         cwd.join("OneShot")
     } else {

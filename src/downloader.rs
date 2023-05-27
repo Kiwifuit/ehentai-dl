@@ -113,6 +113,8 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         cwd.join(gallery.title())
     };
 
+    debug!("Gallery: {:?}", &gallery);
+
     let total = if cfg!(feature = "aniyomi") {
         gallery.len() as u64 + 1
     } else {

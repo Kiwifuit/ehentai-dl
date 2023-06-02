@@ -31,6 +31,15 @@ cfg_if::cfg_if! {
     }
 }
 
+cfg_if::cfg_if! {
+    if #[cfg(feature = "config")] {
+        mod config;
+    } else {
+        #[allow(unused_imports, dead_code)]
+        mod config;
+    }
+}
+
 mod extractor;
 mod logger;
 mod parser;

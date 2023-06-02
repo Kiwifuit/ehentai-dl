@@ -18,12 +18,14 @@ reqwest = {version = "0.11.14", features = ["blocking", "stream"]}
 scraper = "0.16.0"
 tempfile = "3.3.0"
 tokio = { version = "1.27.0", features = ["full"] }
+toml = { version = "0.7.4", optional = true }
 zip = { version = "0.6.4", optional = true, default-features= false, features = ["bzip2"]}
 
 [features]
-default = []
+default = ["config"]
 aniyomi = ["dep:json_minimal"]
 zip = ["dep:zip"]
+config = ["dep:toml"]
 
 [profile.release]
 lto = true

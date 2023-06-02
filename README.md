@@ -35,4 +35,4 @@ Zips the whole gallery and deletes the original. Uses the `bizp2` feature of the
 ### `config`
 Compiled features can be turned on and off here. The program will error out when you try to set for a feature that wasn't compiled with the binary
 
-**This is a work in progress**. In fact, it hasn't even started development
+**This is a work in progress**

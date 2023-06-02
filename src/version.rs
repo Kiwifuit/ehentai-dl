@@ -32,5 +32,9 @@ fn get_features<'a>() -> Vec<&'a str> {
         res.push("zip");
     }
 
+    if cfg!(feature = "config") {
+        res.push("config");
+    }
+
     res
 }

@@ -34,6 +34,9 @@ fn main() {
         }
     }
 
+    println!("{:?}", config::APP_CONFIG);
+    exit(0);
+
     let version = version::get_version();
     let mut errs = 0;
     logger::setup_logger(logger::LogLevel::Debug)

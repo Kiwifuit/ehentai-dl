@@ -12,7 +12,6 @@ A program to download your galleries 🦀
 - [ ] Setting/Config
   - `cargo build --release --features config`
 - [ ] Very lightweight CLI/Argument parser
-  - ~~Verbosity with `-v` controls the verbosity of the log files~~ **scrapped**
   - Point to a config file with `-c`
   - Show version with `--version`
     - [x] Versioning scheme

@@ -9,5 +9,4 @@ pub struct Config {
 pub(super) struct ConfigKeys {
     features: Vec<String>,
     chunk_size: usize,
-    log_level: crate::logger::LogLevel,
 }

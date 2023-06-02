@@ -8,7 +8,9 @@ use std::path::PathBuf;
 use chrono::Local;
 use fern_colored::{log_file, Dispatch};
 use log::LevelFilter;
+use serde::Deserialize;
 
+#[derive(Deserialize)]
 pub enum LogLevel {
     Off,
     Trace,

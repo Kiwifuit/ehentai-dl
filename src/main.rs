@@ -5,40 +5,16 @@ use log::{error, info};
 #[macro_use]
 mod macros;
 
-cfg_if::cfg_if! {
-    if #[cfg(not(feature = "aniyomi"))] {
-        #[allow(unused_imports)]
-        mod aniyomi;
-
-        #[allow(dead_code)]
-        mod gallery;
-    } else {
-        mod aniyomi;
-        mod gallery;
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(not(feature = "zip"))] {
-        #[allow(unused_imports)]
-        mod zip;
-
-        #[allow(dead_code)]
-        mod downloader;
-    } else {
-        mod zip;
-        mod downloader;
-    }
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(feature = "config")] {
-        mod config;
-    } else {
-        #[allow(unused_imports, dead_code)]
-        mod config;
-    }
-}
+#[cfg_attr(not(feature = "aniyomi"), allow(unused_imports))]
+mod aniyomi;
+#[cfg_attr(not(feature = "config"), allow(unused_imports))]
+mod config;
+#[cfg_attr(not(feature = "zip"), allow(dead_code))]
+mod downloader;
+#[cfg_attr(not(feature = "aniyomi"), allow(dead_code))]
+mod gallery;
+#[cfg_attr(not(feature = "zip"), allow(unused_imports))]
+mod zip;
 
 mod extractor;
 mod logger;
@@ -49,6 +25,15 @@ mod version;
 const CHUNK_SIZE: usize = 1024;
 
 fn main() {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "config")] {
+            if let Err(err) = config::read_config() {
+                eprintln!("error while loading config: {}", err);
+                exit(-1)
+            }
+        }
+    }
+
     let version = version::get_version();
     let mut errs = 0;
     logger::setup_logger(logger::LogLevel::Debug)
@@ -75,10 +60,9 @@ fn main() {
 
             continue;
         }
+
         let gallery = gallery.unwrap();
-
         info!("downloading gallery {:?}", gallery.title());
-
         let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog);
 
         if let Err(ref err) = download_averages {

@@ -1,12 +1,16 @@
 use std::cell::OnceCell;
 use std::env::var;
+use std::fmt::Display;
 use std::fs::OpenOptions;
 use std::io::{Error, Read};
 
+#[cfg(feature = "config")]
 mod entities;
 
+#[cfg(feature = "config")]
 pub const APP_CONFIG: OnceCell<entities::Config> = OnceCell::new();
 
+#[cfg(feature = "config")]
 pub enum ConfigError {
     OpenError(Error),
     ReadError(Error),
@@ -14,6 +18,24 @@ pub enum ConfigError {
     SetError,
 }
 
+#[cfg(feature = "config")]
+impl Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "error while {}",
+            match self {
+                Self::OpenError(e) => format!("opening config file: {}", e),
+                Self::ReadError(e) => format!("reading config file: {}", e),
+                Self::TomlError(e) => format!("parsing config file: {}", e),
+                Self::SetError =>
+                    String::from("setting values. perhaps the config has already been loaded?"),
+            }
+        )
+    }
+}
+
+#[cfg(feature = "config")]
 pub fn read_config() -> Result<(), ConfigError> {
     let mut config = String::new();
     let mut config_file = OpenOptions::new()

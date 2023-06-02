@@ -2,3 +2,4 @@
 /notes
 /Cargo.lock
 *.log
+/config.toml

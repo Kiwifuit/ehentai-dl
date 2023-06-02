@@ -1,9 +1,42 @@
 #[cfg(feature = "config")]
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "config")]
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Config {
-    features: Vec<String>,
-    log_level: crate::logger::LogLevel,
+    pub app: AppConfig,
+
+    #[cfg(feature = "aniyomi")]
+    pub aniyomi: AniyomiConfig,
+
+    #[cfg(feature = "zip")]
+    pub zip: ZipConfig,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AppConfig {
+    pub features: Vec<String>,
+    pub log_level: crate::logger::LogLevel,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            features: crate::version::get_features(),
+            log_level: crate::logger::LogLevel::default(),
+        }
+    }
+}
+
+#[cfg(all(feature = "config", feature = "aniyomi"))]
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct AniyomiConfig {
+    pub description: Option<String>,
+    pub rename: bool,
+}
+
+#[cfg(all(feature = "config", feature = "zip"))]
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ZipConfig {
+    pub delete_original: bool,
 }

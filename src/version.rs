@@ -21,7 +21,7 @@ pub fn get_version() -> String {
     .to_string()
 }
 
-fn get_features<'a>() -> Vec<&'a str> {
+pub fn get_features() -> Vec<String> {
     let mut res = vec![];
 
     if cfg!(feature = "aniyomi") {
@@ -36,5 +36,5 @@ fn get_features<'a>() -> Vec<&'a str> {
         res.push("config");
     }
 
-    res
+    res.iter().map(|i| String::from(*i)).collect()
 }

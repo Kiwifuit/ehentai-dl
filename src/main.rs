@@ -1,4 +1,5 @@
 use std::process::exit;
+use std::sync::RwLock;
 
 use log::{error, info};
 
@@ -24,23 +25,32 @@ mod version;
 
 const CHUNK_SIZE: usize = 1024;
 
-fn main() {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "config")] {
-            if let Err(err) = config::read_config() {
-                eprintln!("error while loading config: {}", err);
-                exit(-1)
-            }
+cfg_if::cfg_if! {
+    if #[cfg(feature = "config")] {
+        lazy_static::lazy_static! {
+            static ref CONFIG: RwLock<config::Config> = RwLock::new(
+                config::read_config()
+                    .map_err(|e| {
+                        eprintln!("error while loading config: {}", e);
+                        exit(-1);
+                    })
+                    .unwrap(),
+            );
         }
     }
+}
 
-    println!("{:?}", config::APP_CONFIG);
-    exit(0);
-
+fn main() {
     let version = version::get_version();
     let mut errs = 0;
-    logger::setup_logger(logger::LogLevel::Debug)
-        .expect("unexpected error while starting the logger");
+    logger::setup_logger(
+        CONFIG
+            .read()
+            .and_then(|c| Ok(c.app.log_level))
+            .unwrap_or_default(),
+    )
+    .expect("unexpected error while starting the logger");
+
     info!("{}", version);
 
     let m_prog = progress::Progress::new();

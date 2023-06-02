@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use futures_util::StreamExt;
 use indicatif::ProgressStyle;
-use log::debug;
+use log::{debug, info};
 use reqwest::get;
 
 use crate::gallery::{Gallery, Image};

@@ -9,17 +9,30 @@ use chrono::Local;
 use fern_colored::{log_file, Dispatch};
 use log::LevelFilter;
 #[cfg(feature = "config")]
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "config")]
-#[derive(Deserialize, Debug)]
-pub enum LogLevel {
-    Off,
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
+cfg_if::cfg_if! {
+    if #[cfg(feature = "config")]{
+        #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+        pub enum LogLevel {
+            Off,
+            Trace,
+            Debug,
+            Info,
+            Warn,
+            Error,
+        }
+    } else {
+        pub enum LogLevel {
+            Off,
+            Trace,
+            Debug,
+            Info,
+            Warn,
+            Error,
+        }
+    }
+
 }
 
 impl Into<LevelFilter> for LogLevel {
@@ -32,6 +45,12 @@ impl Into<LevelFilter> for LogLevel {
             Self::Warn => LevelFilter::Warn,
             Self::Error => LevelFilter::Error,
         }
+    }
+}
+
+impl Default for LogLevel {
+    fn default() -> Self {
+        Self::Info
     }
 }
 

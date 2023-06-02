@@ -22,7 +22,11 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            features: crate::version::get_features(),
+            features: crate::version::get_features()
+                .iter()
+                .filter(|i| i != &&"config".to_string())
+                .map(|i| i.to_owned())
+                .collect(),
             log_level: crate::logger::LogLevel::default(),
         }
     }

@@ -144,44 +144,58 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     // "cfg!, unlike #[cfg], does not remove any
     // code and only evaluates to true or false"
     cfg_if::cfg_if! {
-        if #[cfg(feature = "aniyomi")] {
-            download_prog.set_message("Finishing Touches");
-            let meta = AniyomiMeta::from(gallery);
-            let meta_file = root_dir.with_file_name("details.json");
+        // Very hard to read but I wish that I
+        // could make this better
+        if #[cfg(feature = "aniyomi")] { // This evaluates on compile time
+            if crate::CONFIG
+                .read()
+                .and_then(|c| Ok(c.app.features.contains(&String::from("aniyomi"))))
+                .unwrap()
+            { // This evaluates on runtime
+                download_prog.set_message("Finishing Touches");
+                let meta = AniyomiMeta::from(gallery);
+                let meta_file = root_dir.with_file_name("details.json");
 
-            let mut file = OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(&meta_file)
-                .map_err(|e| DownloadError::FileSystemError(e))?;
+                let mut file = OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .open(&meta_file)
+                    .map_err(|e| DownloadError::FileSystemError(e))?;
 
-            to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
-            let cover_file = make_cover(dl_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
+                to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
+                let cover_file = make_cover(dl_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
 
-            dl_files.push(meta_file);
-            dl_files.push(cover_file);
+                dl_files.push(meta_file);
+                dl_files.push(cover_file);
+            }
         }
     }
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "zip")] {
-            let zip_prog = m_prog.add_prog(dl_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
-            let mut zip_file = zip::make_zip(&format!("{}.zip", gallery.title())).map_err(|e| DownloadError::ZipError(e))?;
+            if crate::CONFIG
+                .read()
+                .and_then(|c| Ok(c.app.features.contains(&String::from("zip"))))
+                .unwrap()
+            {
+                let zip_prog = m_prog.add_prog(dl_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
+                let mut zip_file = zip::make_zip(&format!("{}.zip", gallery.title())).map_err(|e| DownloadError::ZipError(e))?;
 
-            let rd_prog = m_prog.add_prog(1, "Root directory");
-            zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &root_dir).map_err(|e| DownloadError::ZipError(e))?;
-            rd_prog.finish_and_clear();
+                let rd_prog = m_prog.add_prog(1, "Root directory");
+                zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &root_dir).map_err(|e| DownloadError::ZipError(e))?;
+                rd_prog.finish_and_clear();
 
-            for file in dl_files {
-                // why. just why
-                // what was i trying to achieve by
-                // passing in `&root_dir` in the previous commits
-                let written = zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &file).map_err(|e| DownloadError::ZipError(e))?;
+                for file in dl_files {
+                    // why. just why
+                    // what was i trying to achieve by
+                    // passing in `&root_dir` in the previous commits
+                    let written = zip::add_file::<PathBuf, CHUNK_SIZE>(&mut zip_file, &file).map_err(|e| DownloadError::ZipError(e))?;
 
-                info!("Written file {:?} to disc ({} bytes written)", file.to_str().unwrap(), written);
-                zip_prog.inc(1);
+                    info!("Written file {:?} to disc ({} bytes written)", file.to_str().unwrap(), written);
+                    zip_prog.inc(1);
+                }
+                zip_prog.finish_and_clear();
             }
-            zip_prog.finish_and_clear();
         }
     }
 

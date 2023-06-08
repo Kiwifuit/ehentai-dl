@@ -18,8 +18,8 @@ type ZipFile = ZipWriter<File>;
 #[derive(Debug)]
 #[cfg(feature = "zip")]
 pub enum ZipError {
-    ZipOpenError(io::Error),
-    AddDirError(zip::result::ZipError),
+    ZipOpenError(io::Error, String),
+    AddDirError(zip::result::ZipError, String),
     ReadError(io::Error),
     WriteError(io::Error),
     StartFileError {
@@ -35,8 +35,8 @@ impl Display for ZipError {
             f,
             "error while {}",
             match self {
-                Self::ZipOpenError(e) => format!("opening zip file: {}", e),
-                Self::AddDirError(e) => format!("adding directory: {}", e),
+                Self::ZipOpenError(e, f) => format!("opening zip file {:?}: {}", f, e),
+                Self::AddDirError(e, f) => format!("adding directory {:?}: {}", f, e),
                 Self::ReadError(e) => format!("reading file: {}", e),
                 Self::WriteError(e) => format!("writing file: {}", e),
                 Self::StartFileError {
@@ -49,12 +49,13 @@ impl Display for ZipError {
 }
 
 #[cfg(feature = "zip")]
-pub fn make_zip<P: AsRef<Path>>(file: &P) -> Result<ZipFile, ZipError> {
+pub fn make_zip<P: AsRef<Path> + ToString>(filename: &P) -> Result<ZipFile, ZipError> {
+    let filename = sanitize_title(&filename.to_string());
     let file = OpenOptions::new()
         .create_new(true)
         .write(true)
-        .open(file)
-        .map_err(|e| ZipError::ZipOpenError(e))?;
+        .open(&filename)
+        .map_err(|e| ZipError::ZipOpenError(e, filename.to_string()))?;
 
     Ok(ZipWriter::new(file))
 }
@@ -135,7 +136,7 @@ where
         return Ok(written_bytes);
     } else if !path.starts_with("./") {
         arch.add_directory(path.as_os_str().to_string_lossy(), compression_opts)
-            .map_err(|e| ZipError::AddDirError(e))?;
+            .map_err(|e| ZipError::AddDirError(e, path.to_string_lossy().to_string()))?;
     }
 
     Ok(0)

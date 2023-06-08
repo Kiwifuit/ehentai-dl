@@ -1,4 +1,4 @@
-const REPLACE_CHAR: &str = "_";
+const REPLACE_CHAR: char = '_';
 
 #[cfg(target_os = "windows")]
 const BLOCKED_CHARS: &str = "#%&{}\\$!'\":@<>*?/+`|=";
@@ -6,24 +6,19 @@ const BLOCKED_CHARS: &str = "#%&{}\\$!'\":@<>*?/+`|=";
 #[cfg(target_os = "linux")]
 const BLOCKED_CHARS: &str = "/";
 
-pub fn sanitize_title<S>(title: &S) -> String
+pub fn sanitize<S>(title: &S) -> String
 where
     S: ToString + ?Sized,
 {
-    let title = title.to_string();
-    let mut res = title.clone();
-
     title
+        .to_string()
         .chars()
-        .map(|title_char| {
-            BLOCKED_CHARS
-                .chars()
-                .filter(|blocked_char| blocked_char == &title_char)
-                .for_each(|blocked_char| {
-                    res = title.replace(blocked_char, REPLACE_CHAR);
-                })
+        .map(|char| {
+            if BLOCKED_CHARS.contains(char) {
+                REPLACE_CHAR
+            } else {
+                char
+            }
         })
-        .for_each(|_| {});
-
-    res
+        .collect()
 }

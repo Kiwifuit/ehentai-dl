@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 use std::path::{Path, PathBuf};
 
-use crate::sanitize::sanitize_title;
+use crate::sanitize::sanitize;
 use log::{debug, info, trace};
 
 #[cfg(feature = "zip")]
@@ -50,7 +50,7 @@ impl Display for ZipError {
 
 #[cfg(feature = "zip")]
 pub fn make_zip<P: AsRef<Path> + ToString>(filename: &P) -> Result<ZipFile, ZipError> {
-    let filename = sanitize_title(&filename.to_string());
+    let filename = sanitize(&filename.to_string());
     let file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -74,7 +74,7 @@ where
             if c.as_os_str().to_string_lossy() == "." {
                 None
             } else {
-                Some(sanitize_title(&c.as_os_str().to_string_lossy()))
+                Some(sanitize(&c.as_os_str().to_string_lossy()))
             }
         })
         .collect::<PathBuf>();

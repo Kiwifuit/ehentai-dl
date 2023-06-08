@@ -3,6 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 use std::path::{Path, PathBuf};
 
+use crate::sanitize::sanitize_title;
 use log::{debug, info, trace};
 
 #[cfg(feature = "zip")]
@@ -72,7 +73,7 @@ where
             if c.as_os_str().to_string_lossy() == "." {
                 None
             } else {
-                Some(c)
+                Some(sanitize_title(&c.as_os_str().to_string_lossy()))
             }
         })
         .collect::<PathBuf>();

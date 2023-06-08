@@ -52,7 +52,7 @@ impl Gallery {
     }
 
     pub fn set_title(&mut self, title: String) {
-        self.title = title;
+        self.title = crate::sanitize::sanitize_title(&title);
     }
 
     pub fn add_image(&mut self, image: Image) {

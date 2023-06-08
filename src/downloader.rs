@@ -19,7 +19,6 @@ use reqwest::get;
 use crate::gallery::{Gallery, Image};
 use crate::progress::Progress;
 
-use crate::sanitize;
 #[cfg(feature = "zip")]
 use crate::zip;
 
@@ -106,8 +105,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
 ) -> Result<Vec<usize>, DownloadError> {
     let cwd = PathBuf::from(".");
     let root_dir = if cfg!(feature = "aniyomi") {
-        let gallery_title = sanitize::sanitize_title(gallery.title());
-        let cwd = cwd.join(gallery_title);
+        let cwd = cwd.join(gallery.title());
         create_dir(&cwd).map_err(|e| DownloadError::AddDirError(e))?;
 
         cwd.join("OneShot")

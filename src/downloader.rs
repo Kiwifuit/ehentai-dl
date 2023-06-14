@@ -22,6 +22,9 @@ use crate::progress::Progress;
 #[cfg(feature = "zip")]
 use crate::zip;
 
+#[cfg(feature = "zip")]
+use std::fs::remove_dir_all;
+
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";
 type DownloadedImage = (usize, PathBuf);
 
@@ -35,6 +38,9 @@ pub enum DownloadError {
 
     #[cfg(feature = "zip")]
     ZipError(zip::ZipError),
+
+    #[cfg(feature = "zip")]
+    RemoveDirError(PathBuf, std::io::Error),
 }
 
 impl Display for DownloadError {
@@ -51,6 +57,8 @@ impl Display for DownloadError {
 
                 #[cfg(feature = "zip")]
                 Self::ZipError(e) => format!("zipping content: {}", e),
+                #[cfg(feature = "zip")]
+                Self::RemoveDirError(p, e) => format!("removing directory {:?}: {}", p, e),
             }
         )
     }
@@ -195,6 +203,11 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
                     zip_prog.inc(1);
                 }
                 zip_prog.finish_and_clear();
+
+                if crate::CONFIG.read().and_then(|c| Ok(c.zip.delete_original)).unwrap_or(false) {
+                    let root = cwd.join(gallery.title());
+                    remove_dir_all(&root).map_err(|e| DownloadError::RemoveDirError(root, e))?;
+                }
             }
         }
     }

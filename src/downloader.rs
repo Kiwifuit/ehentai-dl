@@ -135,7 +135,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
 
     for image in gallery.images() {
-        let (dl_size, dl_path) = tokio::runtime::Builder::new_current_thread()
+        let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap()

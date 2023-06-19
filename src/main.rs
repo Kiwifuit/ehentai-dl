@@ -1,4 +1,5 @@
 use std::process::exit;
+#[cfg(feature = "config")]
 use std::sync::RwLock;
 
 use log::{error, info};
@@ -44,13 +45,20 @@ cfg_if::cfg_if! {
 fn main() {
     let version = version::get_version();
     let mut errs = 0;
-    logger::setup_logger(
-        CONFIG
-            .read()
-            .and_then(|c| Ok(c.app.log_level))
-            .unwrap_or_default(),
-    )
-    .expect("unexpected error while starting the logger");
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "config")] {
+            logger::setup_logger(CONFIG
+                .read()
+                .and_then(|c| Ok(c.app.log_level))
+                .unwrap_or_default())
+                .expect("unexpected error while starting the logger")
+        } else {
+            logger::setup_logger(
+                logger::LogLevel::default()
+            ).expect("unexpected error while starting the logger")
+        }
+    }
 
     info!("{}", version);
 

@@ -121,6 +121,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         cwd.join(gallery.title())
     };
 
+    info!("Current Dir: {:?}", root_dir);
     debug!("Gallery: {:?}", &gallery);
 
     let total = if cfg!(feature = "aniyomi") {
@@ -155,11 +156,17 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         // Very hard to read but I wish that I
         // could make this better
         if #[cfg(feature = "aniyomi")] { // This evaluates on compile time
-            if crate::CONFIG
+
+            // cannot nest cfg_if blocks within cfg_if blocks
+            #[cfg(feature = "config")]
+            let use_aniyomi = crate::CONFIG
                 .read()
                 .and_then(|c| Ok(c.app.features.contains(&String::from("aniyomi"))))
-                .unwrap()
-            { // This evaluates on runtime
+                .unwrap();
+            #[cfg(not(feature = "config"))]
+            let use_aniyomi = true;
+
+            if use_aniyomi { // This *sorta* evaluates on runtime
                 download_prog.set_message("Finishing Touches");
                 let meta = AniyomiMeta::from(gallery);
                 let meta_file = root_dir.with_file_name("details.json");
@@ -181,11 +188,23 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "zip")] {
-            if crate::CONFIG
+            #[cfg(feature = "config")]
+            let use_zip = crate::CONFIG
                 .read()
                 .and_then(|c| Ok(c.app.features.contains(&String::from("zip"))))
-                .unwrap()
-            {
+                .unwrap();
+            #[cfg(not(feature = "config"))]
+            let use_zip = true;
+
+            #[cfg(feature = "config")]
+            let zip_delete_orig = crate::CONFIG
+                .read()
+                .and_then(|c| Ok(c.zip.delete_original))
+                .unwrap_or(false);
+            #[cfg(not(feature = "config"))]
+            let zip_delete_orig = false;
+
+            if use_zip {
                 let zip_prog = m_prog.add_prog(dl_files.len() as u64 + 1, format!("Zipping Gallery {:?}", gallery.title()));
                 let mut zip_file = zip::make_zip(&format!("{}.zip", gallery.title())).map_err(|e| DownloadError::ZipError(e))?;
 
@@ -204,7 +223,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
                 }
                 zip_prog.finish_and_clear();
 
-                if crate::CONFIG.read().and_then(|c| Ok(c.zip.delete_original)).unwrap_or(false) {
+                if zip_delete_orig {
                     let root = cwd.join(gallery.title());
                     remove_dir_all(&root).map_err(|e| DownloadError::RemoveDirError(root, e))?;
                 }

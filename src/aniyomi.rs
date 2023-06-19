@@ -10,6 +10,7 @@ use log::info;
 use crate::gallery::{Gallery, Tag, TagType};
 use crate::version::get_version;
 
+#[cfg(feature = "aniyomi")]
 lazy_static::lazy_static! {
     static ref DEFAULT_DESCRIPTION: String = format!("Made with {}", get_version());
 }
@@ -76,8 +77,11 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, E
         .add(make_object("artist", Json::STRING(meta.artist.clone())))
         .add(make_object(
             "description",
-            Json::STRING(
-                crate::CONFIG
+            Json::STRING(cfg_if::cfg_if! {
+                if #[cfg(not(feature = "config"))] {
+                    DEFAULT_DESCRIPTION.to_string()
+                } else {
+                    crate::CONFIG
                     .read()
                     .and_then(|c| {
                         Ok(c.aniyomi
@@ -85,8 +89,9 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, E
                             .clone()
                             .unwrap_or(DEFAULT_DESCRIPTION.to_string()))
                     })
-                    .unwrap_or(DEFAULT_DESCRIPTION.to_string()),
-            ),
+                    .unwrap_or(DEFAULT_DESCRIPTION.to_string())
+                }
+            }),
         ))
         .add(make_object("genre", Json::ARRAY(tags)))
         .add(make_object("status", Json::STRING("0".to_string())))

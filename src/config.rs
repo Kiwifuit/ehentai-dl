@@ -79,6 +79,7 @@ fn read_file() -> Result<Config, ConfigError> {
     Ok(config)
 }
 
+#[cfg(feature = "config")]
 fn get_config_file() -> String {
     var("EH_CONFIG").unwrap_or(String::from("./config.toml"))
 }

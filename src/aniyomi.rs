@@ -87,7 +87,7 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, E
     let written = to.write(json.as_bytes())?;
 
     info!(
-        "Dumped Aniyomi Metadata for {:?} ({} bytes written)",
+        "Created Aniyomi Metadata for {:?} ({} bytes written)",
         meta.title, written
     );
 

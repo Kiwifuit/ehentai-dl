@@ -166,18 +166,19 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
             if use_aniyomi { // This *sorta* evaluates on runtime
                 download_prog.set_message("Finishing Touches");
                 let meta = AniyomiMeta::from(gallery);
-                let meta_file = root_dir.with_file_name("details.json");
+                let meta_path = root_dir.with_file_name("details.json");
 
-                let mut file = OpenOptions::new()
+                let mut meta_file = OpenOptions::new()
                     .create_new(true)
                     .write(true)
-                    .open(&meta_file)
+                    .open(&meta_path)
                     .map_err(|e| DownloadError::FileSystemError(e))?;
 
-                to_json_file(&mut file, &meta).map_err(|e| DownloadError::WriteError(e))?;
+                info!("Writing aniyomi meta to {:?}", &meta_path);
+                to_json_file(&mut meta_file, &meta).map_err(|e| DownloadError::WriteError(e))?;
                 let cover_file = make_cover(dl_files.get(0).unwrap()).map_err(|e| DownloadError::WriteError(e))?;
 
-                dl_files.push(meta_file);
+                dl_files.push(meta_path);
                 dl_files.push(cover_file);
             }
         }

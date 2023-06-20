@@ -122,7 +122,8 @@ fn get_description() -> String {
     crate::CONFIG
         .aniyomi
         .description
-        .unwrap_or(DEFAULT_DESCRIPTION)
+        .clone()
+        .unwrap_or(DEFAULT_DESCRIPTION.to_string())
 }
 
 #[cfg(all(not(feature = "config"), feature = "aniyomi"))]

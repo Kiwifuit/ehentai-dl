@@ -21,6 +21,8 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppConfig {
     pub features: Vec<String>,
+
+    #[serde(rename = "log-level")]
     pub log_level: crate::logger::LogLevel,
 }
 
@@ -47,5 +49,6 @@ pub struct AniyomiConfig {
 #[cfg(all(feature = "config", feature = "zip"))]
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ZipConfig {
+    #[serde(rename = "delete-original")]
     pub delete_original: bool,
 }

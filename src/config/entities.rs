@@ -6,6 +6,11 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub app: AppConfig,
 
+    // FIXME: This fucking program can't compile
+    // without their respective features being
+    // turned on.
+    // This shit gon get marked as broken lmfao.
+    // just like me :D
     #[cfg(feature = "aniyomi")]
     pub aniyomi: AniyomiConfig,
 

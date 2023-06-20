@@ -75,24 +75,7 @@ pub fn to_json_file<W: Write>(to: &mut W, meta: &AniyomiMeta) -> Result<usize, E
         .add(make_object("title", Json::STRING(meta.title.clone())))
         .add(make_object("author", Json::NULL))
         .add(make_object("artist", Json::STRING(meta.artist.clone())))
-        .add(make_object(
-            "description",
-            Json::STRING(cfg_if::cfg_if! {
-                if #[cfg(not(feature = "config"))] {
-                    DEFAULT_DESCRIPTION.to_string()
-                } else {
-                    crate::CONFIG
-                    .read()
-                    .and_then(|c| {
-                        Ok(c.aniyomi
-                            .description
-                            .clone()
-                            .unwrap_or(DEFAULT_DESCRIPTION.to_string()))
-                    })
-                    .unwrap_or(DEFAULT_DESCRIPTION.to_string())
-                }
-            }),
-        ))
+        .add(make_object("description", Json::STRING(get_description())))
         .add(make_object("genre", Json::ARRAY(tags)))
         .add(make_object("status", Json::STRING("0".to_string())))
         .add(make_object(
@@ -132,4 +115,17 @@ pub fn make_cover<P: AsRef<Path>>(path: P) -> Result<PathBuf, Error> {
 
     info!("Written {:?} ({} bytes written)", cover, written);
     Ok(cover)
+}
+
+#[cfg(all(feature = "config", feature = "aniyomi"))]
+fn get_description() -> String {
+    crate::CONFIG
+        .aniyomi
+        .description
+        .unwrap_or(DEFAULT_DESCRIPTION)
+}
+
+#[cfg(all(not(feature = "config"), feature = "aniyomi"))]
+fn get_description() -> String {
+    DEFAULT_DESCRIPTION
 }

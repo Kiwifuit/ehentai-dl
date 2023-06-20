@@ -159,10 +159,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
 
             // cannot nest cfg_if blocks within cfg_if blocks
             #[cfg(feature = "config")]
-            let use_aniyomi = crate::CONFIG
-                .read()
-                .and_then(|c| Ok(c.app.features.contains(&String::from("aniyomi"))))
-                .unwrap();
+            let use_aniyomi = crate::CONFIG.app.features.contains(&String::from("aniyomi"));
             #[cfg(not(feature = "config"))]
             let use_aniyomi = true;
 
@@ -189,18 +186,12 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     cfg_if::cfg_if! {
         if #[cfg(feature = "zip")] {
             #[cfg(feature = "config")]
-            let use_zip = crate::CONFIG
-                .read()
-                .and_then(|c| Ok(c.app.features.contains(&String::from("zip"))))
-                .unwrap();
+            let use_zip = crate::CONFIG.app.features.contains(&String::from("zip"));
             #[cfg(not(feature = "config"))]
             let use_zip = true;
 
             #[cfg(feature = "config")]
-            let zip_delete_orig = crate::CONFIG
-                .read()
-                .and_then(|c| Ok(c.zip.delete_original))
-                .unwrap_or(false);
+            let zip_delete_orig = crate::CONFIG.zip.delete_original;
             #[cfg(not(feature = "config"))]
             let zip_delete_orig = false;
 

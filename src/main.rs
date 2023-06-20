@@ -1,6 +1,6 @@
 use std::process::exit;
 #[cfg(feature = "config")]
-use std::sync::RwLock;
+use std::sync::Arc;
 
 use log::{error, info};
 
@@ -30,7 +30,7 @@ const CHUNK_SIZE: usize = 1024;
 cfg_if::cfg_if! {
     if #[cfg(feature = "config")] {
         lazy_static::lazy_static! {
-            static ref CONFIG: RwLock<config::Config> = RwLock::new(
+            static ref CONFIG: Arc<config::Config> = Arc::new(
                 config::read_config()
                     .map_err(|e| {
                         eprintln!("error while loading config: {}", e);
@@ -48,10 +48,7 @@ fn main() {
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "config")] {
-            logger::setup_logger(CONFIG
-                .read()
-                .and_then(|c| Ok(c.app.log_level))
-                .unwrap_or_default())
+            logger::setup_logger(CONFIG.app.log_level)
                 .expect("unexpected error while starting the logger")
         } else {
             logger::setup_logger(

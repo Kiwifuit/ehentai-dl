@@ -14,15 +14,24 @@ use serde::{Deserialize, Serialize};
 cfg_if::cfg_if! {
     if #[cfg(feature = "config")]{
         #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+        pub enum LogLevel {
+            Off,
+            Trace,
+            Debug,
+            Info,
+            Warn,
+            Error,
+        }
+    } else {
+        pub enum LogLevel {
+            Off,
+            Trace,
+            Debug,
+            Info,
+            Warn,
+            Error,
+        }
     }
-}
-pub enum LogLevel {
-    Off,
-    Trace,
-    Debug,
-    Info,
-    Warn,
-    Error,
 }
 
 impl Into<LevelFilter> for LogLevel {

@@ -5,6 +5,9 @@ use std::sync::Arc;
 
 use log::{error, info};
 
+use humansize::{FormatSize, FormatSizeI, DECIMAL};
+use stybulate::{Cell, Headers, Style, Table};
+
 #[macro_use]
 mod macros;
 
@@ -102,7 +105,7 @@ fn main() {
 
         gallery_prog.inc(1);
     }
-    gallery_prog.finish();
+    gallery_prog.finish_and_clear();
 
     if errs < 0 {
         eprintln!(
@@ -110,5 +113,21 @@ fn main() {
             errs
         );
         exit(errs);
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "metrics")] {
+            let table = Table::new(
+                Style::FancyPresto,
+                download_totals.iter().map(|(gallery, sizes)| {
+                    let sizes_total: usize = sizes.into_iter().sum();
+
+                    vec![Cell::from(gallery.title()), Cell::from(&sizes_total.format_size(DECIMAL))]
+                }).collect(),
+                Some(Headers::from(vec!["Title", "Download Size"]))
+            ).tabulate();
+
+            println!("Downloaded the following Galleries:\n\n{}", table);
+        }
     }
 }

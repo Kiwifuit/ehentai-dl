@@ -4,7 +4,7 @@ use scraper::ElementRef;
 
 type Images<'a> = Iter<'a, Image>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Gallery {
     title: String,
     image_count: u8,
@@ -12,24 +12,24 @@ pub struct Gallery {
     tags: Tags,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Image {
     url: String,
     file: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tag {
     t_type: TagType,
     t_val: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tags {
     _inner: Vec<Tag>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum TagType {
     ReClass,
     Parody,

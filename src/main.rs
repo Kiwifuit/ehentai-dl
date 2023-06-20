@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::process::exit;
 #[cfg(feature = "config")]
 use std::sync::Arc;
@@ -64,6 +65,7 @@ fn main() {
     let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
     let galleries = parser::get_all_galleries(&raw).unwrap();
     let gallery_prog = m_prog.add_prog(galleries.len() as u64, "Getting Galleries");
+    let mut download_totals = HashMap::new();
 
     info!("{} galleries to download", galleries.len());
     for gallery in galleries {
@@ -82,19 +84,19 @@ fn main() {
 
         let gallery = gallery.unwrap();
         info!("downloading gallery {:?}", gallery.title());
-        let download_averages = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog);
-
-        if let Err(ref err) = download_averages {
-            error!(
-                "Error while downloading gallery {1:?}: {0}\nFull Error:\n{0:#?}",
-                err,
-                gallery.title()
-            );
-            errs += 1;
-
-            continue;
+        match downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog) {
+            Ok(downloads) => {
+                download_totals.insert(gallery, downloads);
+            }
+            Err(err) => {
+                error!(
+                    "Error while downloading gallery {1:?}: {0}\nFull Error:\n{0:#?}",
+                    err,
+                    gallery.title()
+                );
+                errs += 1;
+            }
         }
-        let download_averages = download_averages.unwrap();
 
         gallery_prog.inc(1);
     }
@@ -107,4 +109,6 @@ fn main() {
         );
         exit(errs);
     }
+
+
 }

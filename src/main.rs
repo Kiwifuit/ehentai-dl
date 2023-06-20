@@ -16,6 +16,8 @@ mod config;
 mod downloader;
 #[cfg_attr(not(feature = "aniyomi"), allow(dead_code))]
 mod gallery;
+#[cfg_attr(not(feature = "metrics"), allow(unused_imports))]
+mod metrics;
 #[cfg_attr(not(feature = "zip"), allow(unused_imports))]
 mod zip;
 
@@ -109,6 +111,4 @@ fn main() {
         );
         exit(errs);
     }
-
-
 }

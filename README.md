@@ -42,4 +42,7 @@ Zips the whole gallery and deletes the original. ***Does not work with Aniyomi's
 ### `config`
 Compiled features can be turned on and off here. The program will error out when you try to set for a feature that wasn't compiled with the binary.
 
-**NOTE**: This feature is *sorta* broken in the fact that it needs all features to be turned on. **Enabling this feature implies `zip` and `aniyomi`**
+**NOTE**: This feature is *sorta* broken in the fact that it needs all features to be turned on. **Enabling this feature implies `zip`, `aniyomi`, and `metrics`**
+
+## `metrics`
+Reports metrics data/which galleries were the heaviest

@@ -26,6 +26,7 @@ use crate::zip;
 use std::fs::remove_dir_all;
 
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";
+const TITLE_DISPLAY_LENGTH: usize = 16;
 type DownloadedImage = (usize, PathBuf);
 
 #[derive(Debug)]
@@ -86,7 +87,7 @@ async fn download_image(
 
     let download_prog = m_prog.add_custom_prog(
         content_length,
-        format!("Downloading {}", image.get_filename()),
+        format!("Downloading {}", try_truncate(image.get_filename())),
         ProgressStyle::with_template(PROGBAR_STYLE).unwrap(),
     );
 
@@ -224,4 +225,14 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     }
 
     Ok(dl_sizes)
+}
+
+fn try_truncate(raw: &String) -> String {
+    let mut raw = raw.clone();
+
+    if TITLE_DISPLAY_LENGTH <= raw.len() {
+        raw.truncate(TITLE_DISPLAY_LENGTH - 3);
+    }
+
+    raw
 }

@@ -27,7 +27,16 @@ use std::fs::remove_dir_all;
 
 const PROGBAR_STYLE: &str = "{prefix:<50} [{bar:>50}] {msg} {bytes}/{total_bytes}";
 const TITLE_DISPLAY_LENGTH: usize = 16;
-type DownloadedImage = (usize, PathBuf);
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "metrics")] {
+        type DownloadedImage = (usize, PathBuf);
+        type DownloadResponse = Vec<usize>;
+    } else {
+        type DownloadedImage = PathBuf;
+        type DownloadResponse = ();
+    }
+}
 
 #[derive(Debug)]
 pub enum DownloadError {
@@ -105,13 +114,20 @@ async fn download_image(
         downloaded,
         save_path.file_name().unwrap().to_str().unwrap()
     );
-    Ok((downloaded, save_path))
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "metrics")] {
+            Ok((downloaded, save_path))
+        } else {
+            Ok(save_path)
+        }
+    }
 }
 
 pub fn download_gallery<const CHUNK_SIZE: usize>(
     gallery: &Gallery,
     m_prog: &Progress,
-) -> Result<Vec<usize>, DownloadError> {
+) -> Result<DownloadResponse, DownloadError> {
     let cwd = PathBuf::from(".");
     let root_dir = if cfg!(feature = "aniyomi") {
         let cwd = cwd.join(gallery.title());
@@ -131,18 +147,32 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         gallery.len() as u64
     };
     let download_prog = m_prog.add_prog(total, "Downloading images");
+
+    #[cfg(feature = "metrics")]
     let mut dl_sizes = vec![];
     let mut dl_files = vec![];
 
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
 
     for image in gallery.images() {
-        let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(download_image(image, &root_dir, &m_prog))?;
-        dl_sizes.push(dl_size);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "metrics")] {
+                let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(download_image(image, &root_dir, &m_prog))?;
+
+                dl_sizes.push(dl_size);
+            } else {
+                let dl_path = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(download_image(image, &root_dir, &m_prog))?;
+            }
+        }
+
         dl_files.push(dl_path);
         download_prog.inc(1);
     }
@@ -224,7 +254,13 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
         }
     }
 
-    Ok(dl_sizes)
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "metrics")] {
+            Ok(dl_sizes)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 fn try_truncate(raw: &String) -> String {

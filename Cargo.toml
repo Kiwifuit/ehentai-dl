@@ -26,7 +26,7 @@ toml = { version = "0.7.4", optional = true }
 zip = { version = "0.6.4", optional = true, default-features= false, features = ["bzip2"]}
 
 [features]
-default = ["aniyomi", "config", "zip", "metrics"]
+default = []
 aniyomi = ["dep:json_minimal", "dep:lazy_static"]
 zip = ["dep:zip"]
 config = ["dep:toml", "dep:serde", "dep:lazy_static"]

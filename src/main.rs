@@ -1,12 +1,16 @@
-use std::collections::HashMap;
 use std::process::exit;
 #[cfg(feature = "config")]
 use std::sync::Arc;
 
 use log::{error, info};
 
-use humansize::{FormatSize, FormatSizeI, DECIMAL};
-use stybulate::{Cell, Headers, Style, Table};
+cfg_if::cfg_if! {
+    if #[cfg(feature = "metrics")] {
+        use std::collections::HashMap;
+        use humansize::{FormatSize, DECIMAL};
+        use stybulate::{Cell, Headers, Style, Table};
+    }
+}
 
 #[macro_use]
 mod macros;
@@ -19,8 +23,6 @@ mod config;
 mod downloader;
 #[cfg_attr(not(feature = "aniyomi"), allow(dead_code))]
 mod gallery;
-#[cfg_attr(not(feature = "metrics"), allow(unused_imports))]
-mod metrics;
 #[cfg_attr(not(feature = "zip"), allow(unused_imports))]
 mod zip;
 
@@ -70,6 +72,8 @@ fn main() {
     let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
     let galleries = parser::get_all_galleries(&raw).unwrap();
     let gallery_prog = m_prog.add_prog(galleries.len() as u64, "Getting Galleries");
+
+    #[cfg(feature = "metrics")]
     let mut download_totals = HashMap::new();
 
     info!("{} galleries to download", galleries.len());
@@ -89,6 +93,8 @@ fn main() {
 
         let gallery = gallery.unwrap();
         info!("downloading gallery {:?}", gallery.title());
+
+        #[cfg(feature = "metrics")]
         match downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog) {
             Ok(downloads) => {
                 download_totals.insert(gallery, downloads);
@@ -101,6 +107,16 @@ fn main() {
                 );
                 errs += 1;
             }
+        }
+
+        #[cfg(not(feature = "metrics"))]
+        if let Err(err) = downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog) {
+            error!(
+                "Error while downloading gallery {1:?}: {0}\nFull Error:\n{0:#?}",
+                err,
+                gallery.title()
+            );
+            errs += 1;
         }
 
         gallery_prog.inc(1);

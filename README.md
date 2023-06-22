@@ -33,6 +33,15 @@ cargo build --features <config,aniyomi,etc>
 ```
 
 ## Compilation: Features
+
+### `cli`
+**This is the default feature**. This adds support for configuring via command-line.
+
+This feature takes precedence over `config`, so if both features are enabled, only `cli`'s values are respected, and there will be no `config.toml` file.
+
+All build features are assumed to be enabled, unlike
+`config` where these features can be enabled or disabled.
+
 ### `aniyomi`
 Writes the necessary metadata and file structure for Aniyomi to parse.
 
@@ -42,7 +51,10 @@ Zips the whole gallery and deletes the original. ***Does not work with Aniyomi's
 ### `config`
 Compiled features can be turned on and off here. The program will error out when you try to set for a feature that wasn't compiled with the binary.
 
-**NOTE**: This feature is *sorta* broken in the fact that it needs all features to be turned on. **Enabling this feature implies `zip`, `aniyomi`, and `metrics`**
+***This feature does not work well with `cli` as its values
+take precedence over `config`'s***
+
+**NOTE**: This feature is *sorta* broken in the fact that it needs all features to be turned on. **Enabling this feature means you should enable `zip`, `aniyomi`, and `metrics`**
 
 ## `metrics`
 Reports metrics data/which galleries were the heaviest

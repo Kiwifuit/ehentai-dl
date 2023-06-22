@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 cfg-if = "1.0.0"
 chrono = {version = "0.4.23", default-features = false, features=["std", "clock"]}
+clap = { version = "4.3.5", features = ["derive"], optional = true }
 fern_colored = "0.6.1"
 futures-util = "0.3.28"
 humansize = { version = "2.1.3", features = ["impl_style"], optional = true }
@@ -26,11 +27,12 @@ toml = { version = "0.7.4", optional = true }
 zip = { version = "0.6.4", optional = true, default-features= false, features = ["bzip2"]}
 
 [features]
-default = []
+default = ["cli"]
 aniyomi = ["dep:json_minimal", "dep:lazy_static"]
 zip = ["dep:zip"]
 config = ["dep:toml", "dep:serde", "dep:lazy_static"]
 metrics = ["dep:humansize", "dep:stybulate"]
+cli = ["dep:clap"]
 
 [profile.release]
 lto = true

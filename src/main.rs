@@ -17,6 +17,8 @@ mod macros;
 
 #[cfg_attr(not(feature = "aniyomi"), allow(unused_imports))]
 mod aniyomi;
+#[cfg_attr(not(feature = "cli"), allow(unused_imports))]
+mod cli;
 #[cfg_attr(not(feature = "config"), allow(unused_imports))]
 mod config;
 #[cfg_attr(not(feature = "zip"), allow(dead_code))]

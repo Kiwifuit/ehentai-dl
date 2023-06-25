@@ -36,5 +36,9 @@ pub fn get_features() -> Vec<String> {
         res.push("config");
     }
 
+    if cfg!(feature = "cli") {
+        res.push("cli");
+    }
+
     res.iter().map(|i| String::from(*i)).collect()
 }

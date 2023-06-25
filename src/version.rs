@@ -24,21 +24,14 @@ pub fn get_version() -> String {
 pub fn get_features() -> Vec<String> {
     let mut res = vec![];
 
-    if cfg!(feature = "aniyomi") {
-        res.push("aniyomi");
-    }
-
-    if cfg!(feature = "zip") {
-        res.push("zip");
-    }
-
-    if cfg!(feature = "config") {
-        res.push("config");
-    }
-
-    if cfg!(feature = "cli") {
-        res.push("cli");
-    }
+    #[cfg(feature = "aniyomi")]
+    res.push("aniyomi");
+    #[cfg(feature = "zip")]
+    res.push("zip");
+    #[cfg(feature = "config")]
+    res.push("config");
+    #[cfg(feature = "cli")]
+    res.push("cli");
 
     res.iter().map(|i| String::from(*i)).collect()
 }

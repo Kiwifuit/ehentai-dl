@@ -21,6 +21,7 @@ pub fn get_version() -> String {
     .to_string()
 }
 
+#[allow(unused_mut)]
 pub fn get_features() -> Vec<String> {
     let mut res = vec![];
 
@@ -33,5 +34,5 @@ pub fn get_features() -> Vec<String> {
     #[cfg(feature = "cli")]
     res.push("cli");
 
-    res.iter().map(|i| String::from(*i)).collect()
+    res.iter().map(|i: &&str| String::from(*i)).collect()
 }

@@ -1,5 +1,5 @@
-use std::process::exit;
 use std::path::PathBuf;
+use std::process::exit;
 
 #[cfg(any(feature = "config", feature = "cli"))]
 use std::sync::Arc;
@@ -36,6 +36,7 @@ mod gallery;
 mod zip;
 
 mod extractor;
+#[cfg_attr(not(feature = "config"), allow(dead_code))]
 mod logger;
 mod parser;
 mod progress;
@@ -172,11 +173,11 @@ fn get_file() -> PathBuf {
 
 #[cfg(not(feature = "cli"))]
 fn get_file() -> PathBuf {
-    let raw_path = match args().nth(1 ){
+    let raw_path = match args().nth(1) {
         Some(p) => p,
         None => {
-            eprintln("No file to read from was provided");
-            exit(404)
+            eprintln!("No file to read from was provided");
+            exit(0x404)
         }
     };
 

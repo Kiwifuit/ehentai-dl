@@ -1,6 +1,8 @@
-use std::path::PathBuf;
-use std::str::FromStr;
+#[cfg(feature = "cli")]
 use std::fmt::Display;
+use std::path::PathBuf;
+#[cfg(feature = "cli")]
+use std::str::FromStr;
 
 use chrono::Local;
 use fern_colored::{log_file, Dispatch};
@@ -20,9 +22,13 @@ pub enum LevelToStrError {
 #[cfg(feature = "cli")]
 impl Display for LevelToStrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            Self::NoSuchValue(level) => format!("No such log level: {}", level)
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NoSuchValue(level) => format!("No such log level: {}", level),
+            }
+        )
     }
 }
 

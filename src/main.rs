@@ -1,5 +1,5 @@
 use std::process::exit;
-#[cfg(feature = "config")]
+#[cfg(any(feature = "config", feature = "cli"))]
 use std::sync::Arc;
 
 use log::{error, info};
@@ -11,6 +11,9 @@ cfg_if::cfg_if! {
         use stybulate::{Cell, Headers, Style, Table};
     }
 }
+
+#[cfg(feature = "cli")]
+use clap::Parser;
 
 #[macro_use]
 mod macros;
@@ -49,6 +52,10 @@ cfg_if::cfg_if! {
                     .unwrap(),
             );
         }
+    } else if #[cfg(feature = "cli")] {
+        lazy_static::lazy_static! {
+            static ref ARGS: Arc<cli::Args> = Arc::new(cli::Args::parse());
+        }
     }
 }
 
@@ -59,6 +66,9 @@ fn main() {
     cfg_if::cfg_if! {
         if #[cfg(feature = "config")] {
             logger::setup_logger(CONFIG.app.log_level)
+                .expect("unexpected error while starting the logger")
+        } else if #[cfg(feature = "cli")] {
+            logger::setup_logger(ARGS.log_level.unwrap_or_default())
                 .expect("unexpected error while starting the logger")
         } else {
             logger::setup_logger(

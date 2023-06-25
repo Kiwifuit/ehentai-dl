@@ -1,15 +1,33 @@
-#![allow(dead_code)]
-// TODO: Remove ^ when we start writing the CLI
-//       I would want something like a -v flag
-//       but passing in more -v flags increases
-//       the verbosity
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::fmt::Display;
 
 use chrono::Local;
 use fern_colored::{log_file, Dispatch};
 use log::LevelFilter;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "cli")]
+use std::error::Error;
+
+#[cfg(feature = "cli")]
+#[derive(Debug)]
+pub enum LevelToStrError {
+    NoSuchValue(String),
+}
+
+#[cfg(feature = "cli")]
+impl Display for LevelToStrError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Self::NoSuchValue(level) => format!("No such log level: {}", level)
+        })
+    }
+}
+
+#[cfg(feature = "cli")]
+impl Error for LevelToStrError {}
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "config")]{
@@ -23,6 +41,7 @@ cfg_if::cfg_if! {
             Error,
         }
     } else {
+        #[derive(Debug, Clone, Copy)]
         pub enum LogLevel {
             Off,
             Trace,
@@ -50,6 +69,23 @@ impl Into<LevelFilter> for LogLevel {
 impl Default for LogLevel {
     fn default() -> Self {
         Self::Info
+    }
+}
+
+#[cfg(feature = "cli")]
+impl FromStr for LogLevel {
+    type Err = LevelToStrError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "off" => Ok(LogLevel::Off),
+            "trace" => Ok(LogLevel::Trace),
+            "debug" => Ok(LogLevel::Debug),
+            "info" => Ok(LogLevel::Info),
+            "warn" => Ok(LogLevel::Warn),
+            "error" => Ok(LogLevel::Error),
+            other => Err(LevelToStrError::NoSuchValue(other.to_string())),
+        }
     }
 }
 
@@ -86,4 +122,13 @@ fn get_log_file() -> PathBuf {
     let filename = Local::now().format("%d%m%y-%H%M%S.log");
 
     PathBuf::from(filename.to_string())
+}
+
+#[cfg(feature = "cli")]
+pub fn parse_log_level<T>(s: &str) -> Result<T, Box<dyn Error + Send + Sync + 'static>>
+where
+    T: FromStr,
+    T::Err: Error + Send + Sync + 'static,
+{
+    Ok(T::from_str(s)?)
 }

@@ -32,7 +32,7 @@ aniyomi = ["dep:json_minimal", "dep:lazy_static"]
 zip = ["dep:zip"]
 config = ["dep:toml", "dep:serde", "dep:lazy_static"]
 metrics = ["dep:humansize", "dep:stybulate"]
-cli = ["dep:clap"]
+cli = ["dep:clap", "dep:lazy_static"]
 
 [profile.release]
 lto = true

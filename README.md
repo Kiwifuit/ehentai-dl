@@ -9,9 +9,9 @@ A program to download your galleries 🦀
   - `cargo build --release --features aniyomi`
 - [x] Zip Archiver
   - `cargo build --release --features zip`
-- [ ] Setting/Config
+- [x] Setting/Config
   - `cargo build --release --features config`
-- [ ] Very lightweight CLI/Argument parser
+- [x] Very lightweight CLI/Argument parser
   - Point to a config file with `-c`
   - Show version with `--version`
     - [x] Versioning scheme
@@ -56,5 +56,5 @@ take precedence over `config`'s***
 
 **NOTE**: This feature is *sorta* broken in the fact that it needs all features to be turned on. **Enabling this feature means you should enable `zip`, `aniyomi`, and `metrics`**
 
-## `metrics`
+### `metrics`
 Reports metrics data/which galleries were the heaviest

@@ -67,14 +67,18 @@ fn load_file<const CHUNK_SIZE: usize>(
     Ok(bytes_read_total)
 }
 
-pub fn read_file<const CHUNK_SIZE: usize, F>(file: &'static F) -> Result<String, ParseError<0>>
+pub fn read_file<const CHUNK_SIZE: usize, F>(file: &F) -> Result<String, ParseError<0>>
 where
-    F: AsRef<OsStr> + ?Sized,
+    F: AsRef<OsStr>,
 {
     let file = Path::new(file);
     let (file_tx, file_rx) = mpsc::sync_channel(100);
 
-    thread::spawn(move || load_file::<CHUNK_SIZE>(&file, file_tx));
+    thread::scope(|scope| {
+        scope.spawn(|| {
+            load_file::<CHUNK_SIZE>(&file, file_tx)
+        });
+    });
 
     let mut contents = String::new();
     while let Ok((chunk, bytes_read)) = file_rx.recv() {

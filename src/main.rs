@@ -1,4 +1,6 @@
 use std::process::exit;
+use std::path::PathBuf;
+
 #[cfg(any(feature = "config", feature = "cli"))]
 use std::sync::Arc;
 
@@ -14,6 +16,8 @@ cfg_if::cfg_if! {
 
 #[cfg(feature = "cli")]
 use clap::Parser;
+#[cfg(not(feature = "cli"))]
+use std::env::args;
 
 #[macro_use]
 mod macros;
@@ -81,7 +85,8 @@ fn main() {
 
     let m_prog = progress::Progress::new();
 
-    let raw = parser::read_file::<CHUNK_SIZE, str>("res/galleries.txt").unwrap();
+    let file = get_file();
+    let raw = parser::read_file::<CHUNK_SIZE, PathBuf>(&file).unwrap();
     let galleries = parser::get_all_galleries(&raw).unwrap();
     let gallery_prog = m_prog.add_prog(galleries.len() as u64, "Getting Galleries");
 
@@ -158,4 +163,22 @@ fn main() {
             println!("Downloaded the following Galleries:\n\n{}", table);
         }
     }
+}
+
+#[cfg(feature = "cli")]
+fn get_file() -> PathBuf {
+    ARGS.links_file.clone()
+}
+
+#[cfg(not(feature = "cli"))]
+fn get_file() -> PathBuf {
+    let raw_path = match args().nth(1 ){
+        Some(p) => p,
+        None => {
+            eprintln("No file to read from was provided");
+            exit(404)
+        }
+    };
+
+    PathBuf::from(raw_path)
 }

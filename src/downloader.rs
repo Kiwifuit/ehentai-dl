@@ -224,7 +224,9 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
 
             #[cfg(feature = "config")]
             let zip_delete_orig = crate::CONFIG.zip.delete_original;
-            #[cfg(not(feature = "config"))]
+            #[cfg(feature = "cli")]
+            let zip_delete_orig = crate::ARGS.delete_original.unwrap();
+            #[cfg(not(any(feature = "config", feature = "cli")))]
             let zip_delete_orig = false;
 
             if use_zip {

@@ -4,23 +4,8 @@ A program to download your galleries 🦀
 *This project is **not yet complete**, and so release builds wont be released just yet*
 
 ## TODO
-- [x] Image downloader
-- [x] JSON Metadata for Ani/Tachiyomi
-  - `cargo build --release --features aniyomi`
-- [x] Zip Archiver
-  - `cargo build --release --features zip`
-- [x] Setting/Config
-  - `cargo build --release --features config`
-- [x] Very lightweight CLI/Argument parser
-  - Point to a config file with `-c`
-  - Show version with `--version`
-    - [x] Versioning scheme
-     ```
-      ehentai_dl v3.0.2 w/aniyomi,zip,config
-      |^^^^^^^^^| |^^^^|  |^^^^^^^^^^^^^^^^^|
-       Program    Version     Compiler
-        Name                  Features
-      ```
+- [ ] Faster Downloads
+  - Multithreaded downloading?
 
 ## Compilation
 The pre-compiled binaries ***do not contain features***, it is only for the bare minimum of downloading an e-hentai gallery.

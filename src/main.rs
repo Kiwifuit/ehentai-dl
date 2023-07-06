@@ -4,7 +4,7 @@ use std::process::exit;
 #[cfg(any(feature = "config", feature = "cli"))]
 use std::sync::Arc;
 
-use log::{error, info};
+use log::{debug, error, info};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "metrics")] {
@@ -70,19 +70,18 @@ fn main() {
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "config")] {
-            logger::setup_logger(CONFIG.app.log_level)
-                .expect("unexpected error while starting the logger")
+            let log_level = CONFIG.app.log_level;
         } else if #[cfg(feature = "cli")] {
-            logger::setup_logger(ARGS.log_level.unwrap_or_default())
-                .expect("unexpected error while starting the logger")
+            let log_level = ARGS.log_level.unwrap_or_default();
         } else {
-            logger::setup_logger(
-                logger::LogLevel::default()
-            ).expect("unexpected error while starting the logger")
+            let log_level = logger::LogLevel::default();
         }
     }
 
+    logger::setup_logger(log_level).expect("unexpected error while starting the logger");
+
     info!("{}", version);
+    info!("Using log level {:?}", log_level);
 
     let m_prog = progress::Progress::new();
 
@@ -168,7 +167,11 @@ fn main() {
 
 #[cfg(feature = "cli")]
 fn get_file() -> PathBuf {
-    ARGS.links_file.clone()
+    let file = ARGS.links_file.clone();
+
+    debug!("File Path is {}", &file.as_path().display());
+
+    file
 }
 
 #[cfg(not(feature = "cli"))]
@@ -181,5 +184,9 @@ fn get_file() -> PathBuf {
         }
     };
 
-    PathBuf::from(raw_path)
+    let file = PathBuf::from(raw_path);
+
+    debug!("File Path is {}", &file.as_path().display());
+
+    file
 }

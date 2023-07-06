@@ -49,6 +49,8 @@ fn load_file<const CHUNK_SIZE: usize>(
 ) -> Result<usize, ParseError<CHUNK_SIZE>> {
     let mut buf = [0; CHUNK_SIZE];
 
+    debug!("Reading file: {}", path.display());
+
     let mut file = OpenOptions::new()
         .read(true)
         .open(path)
@@ -64,6 +66,7 @@ fn load_file<const CHUNK_SIZE: usize>(
         buf.fill(0);
     }
 
+    debug!("Read {} bytes total", bytes_read_total);
     Ok(bytes_read_total)
 }
 
@@ -75,9 +78,7 @@ where
     let (file_tx, file_rx) = mpsc::sync_channel(100);
 
     thread::scope(|scope| {
-        scope.spawn(|| {
-            load_file::<CHUNK_SIZE>(&file, file_tx)
-        });
+        scope.spawn(|| load_file::<CHUNK_SIZE>(&file, file_tx));
     });
 
     let mut contents = String::new();

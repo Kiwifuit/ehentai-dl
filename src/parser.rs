@@ -58,6 +58,10 @@ fn load_file<const CHUNK_SIZE: usize>(
 
     let mut bytes_read_total = 0;
     while let Ok(bytes_read) = file.read(&mut buf) {
+        if bytes_read == 0 {
+            break;
+        }
+
         bytes_read_total += bytes_read;
 
         let payload = (buf, bytes_read);

@@ -64,7 +64,8 @@ cfg_if::cfg_if! {
     }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let version = version::get_version();
     let mut errs = 0;
 
@@ -112,7 +113,7 @@ fn main() {
         info!("downloading gallery {:?}", gallery.title());
 
         #[cfg(feature = "metrics")]
-        match downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog) {
+        match downloader::download_gallery::<CHUNK_SIZE>(&gallery, &m_prog).await {
             Ok(downloads) => {
                 download_totals.insert(gallery, downloads);
             }

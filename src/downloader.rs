@@ -124,7 +124,7 @@ async fn download_image(
     }
 }
 
-pub fn download_gallery<const CHUNK_SIZE: usize>(
+pub async fn download_gallery<const CHUNK_SIZE: usize>(
     gallery: &Gallery,
     m_prog: &Progress,
 ) -> Result<DownloadResponse, DownloadError> {
@@ -155,11 +155,7 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
 
     for image in gallery.images() {
-        let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(download_image(image, &root_dir, &m_prog))?;
+        let (dl_size, dl_path) = download_image(image, &root_dir, &m_prog).await?;
 
         #[cfg(feature = "metrics")]
         dl_sizes.push(dl_size);

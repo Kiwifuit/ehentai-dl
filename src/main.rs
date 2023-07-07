@@ -70,10 +70,10 @@ async fn main() {
     let mut errs = 0;
 
     cfg_if::cfg_if! {
-        if #[cfg(feature = "config")] {
-            let log_level = CONFIG.app.log_level;
-        } else if #[cfg(feature = "cli")] {
+        if #[cfg(feature = "cli")] {
             let log_level = ARGS.log_level.unwrap_or_default();
+        } else if #[cfg(feature = "config")] {
+            let log_level = CONFIG.app.log_level;
         } else {
             let log_level = logger::LogLevel::default();
         }

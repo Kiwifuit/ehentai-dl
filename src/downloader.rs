@@ -155,24 +155,14 @@ pub fn download_gallery<const CHUNK_SIZE: usize>(
     create_dir(&root_dir).map_err(|e| DownloadError::FileSystemError(e))?;
 
     for image in gallery.images() {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "metrics")] {
-                let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(download_image(image, &root_dir, &m_prog))?;
+        let (dl_size, dl_path) = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(download_image(image, &root_dir, &m_prog))?;
 
-                dl_sizes.push(dl_size);
-            } else {
-                let dl_path = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(download_image(image, &root_dir, &m_prog))?;
-            }
-        }
-
+        #[cfg(feature = "metrics")]
+        dl_sizes.push(dl_size);
         dl_files.push(dl_path);
         download_prog.inc(1);
     }

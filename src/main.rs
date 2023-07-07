@@ -97,7 +97,7 @@ async fn main() {
     info!("{} galleries to download", galleries.len());
     for gallery in galleries {
         info!("fetching data for {:?}", gallery);
-        let gallery = extractor::get_gallery(&gallery, &m_prog);
+        let gallery = extractor::get_gallery(&gallery, &m_prog).await;
 
         if let Err(ref err) = gallery {
             error!(

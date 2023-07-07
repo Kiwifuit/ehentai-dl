@@ -4,7 +4,7 @@ use std::{
 };
 
 use log::{debug, info};
-use reqwest::{blocking::get, IntoUrl};
+use reqwest::{get, IntoUrl};
 use scraper::Html;
 
 use crate::{gallery, progress::Progress};
@@ -36,15 +36,18 @@ impl<'a> Display for ExtractionError<'a> {
     }
 }
 
-fn get_html<'a, U>(url: U) -> Result<Html, ExtractionError<'a>>
+async fn get_html<'a, U>(url: U) -> Result<Html, ExtractionError<'a>>
 where
     U: IntoUrl + Display + Clone,
 {
-    let resp = get(url.clone()).map_err(|e| ExtractionError::NetworkError(e))?;
+    let resp = get(url.clone())
+        .await
+        .map_err(|e| ExtractionError::NetworkError(e))?;
     debug!("GET {} => {}", url, resp.status());
 
     let bytes = resp
         .bytes()
+        .await
         .map_err(|e| ExtractionError::BytesDecodeError(e))?
         .iter()
         .map(|i| *i)
@@ -55,7 +58,7 @@ where
     Ok(html)
 }
 
-pub fn get_gallery<'a, U>(
+pub async fn get_gallery<'a, U>(
     url: &'a U,
     progress: &Progress,
 ) -> Result<gallery::Gallery, ExtractionError<'a>>
@@ -68,7 +71,7 @@ where
 
     overall_progress.set_message("webpage");
     info!("Extracting info for {:?}", url);
-    let html = get_html(url)?;
+    let html = get_html(url).await?;
 
     let pages = get_pages(&html)?;
     info!("{} page(s) to download", pages);
@@ -82,7 +85,7 @@ where
     overall_progress.inc(1);
 
     overall_progress.set_message("images");
-    get_images(&pages, &url.to_string(), &mut gallery, &progress)?;
+    get_images(&pages, &url.to_string(), &mut gallery, &progress).await?;
     overall_progress.inc(1);
 
     overall_progress.set_message("");
@@ -119,7 +122,7 @@ fn get_pages<'a>(html: &Html) -> Result<u8, ExtractionError<'a>> {
     Ok(pagination.ceil() as u8)
 }
 
-fn get_images<'a>(
+async fn get_images<'a>(
     pages: &u8,
     gallery_url: &String,
     gallery: &mut gallery::Gallery,
@@ -129,7 +132,7 @@ fn get_images<'a>(
 
     for i in 0..*pages {
         let url = format!("{}?p={}", gallery_url, i);
-        let html = get_html(url)?;
+        let html = get_html(url).await?;
         let images = html.select(&sel).collect::<Vec<scraper::ElementRef>>();
 
         let prog = progress.add_prog(
@@ -141,7 +144,7 @@ fn get_images<'a>(
             let url = image.value().attr("href").unwrap().to_string();
             let mut image = gallery::Image::new(&url);
 
-            get_image_data(&mut image)?;
+            get_image_data(&mut image).await?;
             gallery.add_image(image);
             prog.inc(1);
         }
@@ -151,8 +154,8 @@ fn get_images<'a>(
     Ok(())
 }
 
-fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
-    let html = get_html(image.get_url())?;
+async fn get_image_data<'a>(image: &mut gallery::Image) -> Result<(), ExtractionError<'a>> {
+    let html = get_html(image.get_url()).await?;
     let filename = compile! { selector "div#i2 div" }?;
     let image_url = compile! { selector "div#i3 a img" }?;
     let url = html
